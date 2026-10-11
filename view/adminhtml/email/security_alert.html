@@ -1,12 +1,12 @@
 <!--@subject {{var subject}} @-->
 
-{{depend exploited_count}}
+{{depend has_exploited}}
 <p style="font-size:18px;font-weight:bold;color:#b91c1c;margin:0 0 6px">Exploited — patch now</p>
 <p style="margin:0 0 16px">Everything in this section is on the CISA list of vulnerabilities attackers are using right now. Update or apply the fix before anything else.</p>
 {{var exploited_block|raw}}
 {{/depend}}
 
-{{depend other_count}}
+{{depend has_other}}
 <p style="font-size:16px;font-weight:bold;margin:24px 0 6px">Other new findings</p>
 <p style="margin:0 0 16px">No exploitation in the wild is known for these yet.</p>
 {{var other_block|raw}}

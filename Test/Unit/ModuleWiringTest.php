@@ -110,7 +110,7 @@ class ModuleWiringTest extends TestCase
         $this->assertSame('ruvelo_security_alerts_email_template', (string)$template['id']);
         $this->assertSame(\Ruvelo\SecurityAlerts\Model\Notifier::TEMPLATE_ID, (string)$template['id']);
         $contents = (string)file_get_contents($file);
-        foreach (['subject', 'exploited_count', 'exploited_block|raw', 'other_count', 'other_block|raw'] as $var) {
+        foreach (['subject', 'exploited_block|raw', 'other_block|raw', 'depend has_exploited', 'depend has_other'] as $var) {
             $this->assertStringContainsString($var, $contents);
         }
     }

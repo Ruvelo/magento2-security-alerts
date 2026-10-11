@@ -93,6 +93,10 @@ class Notifier
                 'subject' => $this->subject(count($exploited), count($findings)),
                 'exploited_count' => count($exploited),
                 'other_count' => count($others),
+                // {{depend}} hides a block only when the value == '' and in PHP 8 that is false for 0,
+                // so the template switches on these instead of the counts. Found by a real install.
+                'has_exploited' => $exploited !== [] ? '1' : '',
+                'has_other' => $others !== [] ? '1' : '',
                 'exploited_block' => $this->block($exploited),
                 'other_block' => $this->block($others),
             ])

@@ -33,7 +33,7 @@ $om->get(State::class)->emulateAreaCode('adminhtml', static function () use ($om
         return $template->processTemplate();
     };
     $both = $render([
-        'subject' => 'x', 'exploited_count' => 1, 'other_count' => 1,
+        'subject' => 'x', 'has_exploited' => '1', 'has_other' => '1', 'exploited_count' => 1, 'other_count' => 1,
         'exploited_block' => '<p id="raw-exploited"><a href="https://example.com/?a=1&amp;b=2">Bad</a></p>',
         'other_block' => '<p id="raw-other">Meh</p>',
     ]);
@@ -43,7 +43,7 @@ $om->get(State::class)->emulateAreaCode('adminhtml', static function () use ($om
         }
     }
     $onlyOthers = $render([
-        'subject' => 'x', 'exploited_count' => 0, 'other_count' => 1, 'exploited_block' => '', 'other_block' => '<p>Meh</p>',
+        'subject' => 'x', 'has_exploited' => '', 'has_other' => '1', 'exploited_count' => 0, 'other_count' => 1, 'exploited_block' => '', 'other_block' => '<p>Meh</p>',
     ]);
     if (str_contains($onlyOthers, 'Exploited — patch now') || !str_contains($onlyOthers, 'Other new findings')) {
         $fail('{{depend}} did not hide the exploited section when exploited_count is 0');

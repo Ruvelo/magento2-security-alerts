@@ -85,9 +85,22 @@ class NotifierTest extends TestCase
         $this->assertStringContainsString('Exploited — patch now', $this->vars['subject']);
         $this->assertSame(1, $this->vars['exploited_count']);
         $this->assertSame(1, $this->vars['other_count']);
+        $this->assertSame('1', $this->vars['has_exploited']);
+        $this->assertSame('1', $this->vars['has_other']);
         $this->assertStringContainsString('Loud one', $this->vars['exploited_block']);
         $this->assertStringNotContainsString('Quiet one', $this->vars['exploited_block']);
         $this->assertStringContainsString('Quiet one', $this->vars['other_block']);
+    }
+
+    public function testAnEmptySectionIsSwitchedOffWithAnEmptyString(): void
+    {
+        // {{depend}} hides a block when the value == '', which PHP 8 says is false for the integer 0.
+        $this->store->insert(Findings::make(advisory: 'PKSA-1', title: 'Quiet one'));
+
+        $this->notifier()->notifyPending();
+
+        $this->assertSame('', $this->vars['has_exploited']);
+        $this->assertSame('1', $this->vars['has_other']);
     }
 
     public function testNothingIsSentTwice(): void
