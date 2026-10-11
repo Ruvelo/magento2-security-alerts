@@ -1,0 +1,49 @@
+{
+  "title": "CISA Catalog of Known Exploited Vulnerabilities",
+  "catalogVersion": "2026.10.08",
+  "count": 6,
+  "vulnerabilities": [
+    {
+      "cveID": "CVE-2026-71362",
+      "vendorProject": "Adobe",
+      "product": "Commerce and Magento ",
+      "vulnerabilityName": "Adobe Commerce and Magento Incorrect Authorization Vulnerability ",
+      "dateAdded": "2026-09-24"
+    },
+    {
+      "cveID": "CVE-2026-75650",
+      "vendorProject": "Adobe",
+      "product": "Commerce and Magento",
+      "vulnerabilityName": "Adobe Commerce and Magento Improper Neutralization of Special Elements Used in a Template Engine Vulnerability",
+      "dateAdded": "2026-09-08"
+    },
+    {
+      "cveID": "CVE-2025-54236",
+      "vendorProject": "Adobe",
+      "product": "Commerce and\u202fMagento",
+      "vulnerabilityName": "Adobe Commerce and\u202fMagento Improper Input Validation Vulnerability",
+      "dateAdded": "2025-10-24"
+    },
+    {
+      "cveID": "CVE-2024-34102",
+      "vendorProject": "Adobe",
+      "product": "Commerce and Magento Open Source",
+      "vulnerabilityName": "Adobe Commerce and Magento Open Source Improper Restriction of XML External Entity Reference (XXE) Vulnerability",
+      "dateAdded": "2024-07-17"
+    },
+    {
+      "cveID": "CVE-2022-24086",
+      "vendorProject": "Adobe",
+      "product": "Commerce and Magento Open Source",
+      "vulnerabilityName": "Adobe Commerce and Magento Open Source Improper Input Validation Vulnerability",
+      "dateAdded": "2022-02-15"
+    },
+    {
+      "cveID": "CVE-2015-5477",
+      "vendorProject": "ISC",
+      "product": "BIND",
+      "vulnerabilityName": " ISC BIND Data Processing Errors Vulnerability",
+      "dateAdded": "2026-10-08"
+    }
+  ]
+}
