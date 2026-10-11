@@ -1,0 +1,55 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    name: Coding standard and static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, bcmath, soap, gd, xsl, zip, sockets
+          coverage: none
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Lint
+        run: composer lint
+
+      - name: Magento coding standard
+        run: composer cs
+
+      - name: Static analysis
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+  tests:
+    name: PHP ${{ matrix.php }} · ${{ matrix.stability }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+        stability: [prefer-stable, prefer-lowest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, intl, bcmath, soap, gd, xsl, zip, sockets
+          coverage: none
+
+      - name: Install dependencies
+        run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
+
+      - name: Unit tests
+        run: vendor/bin/phpunit
