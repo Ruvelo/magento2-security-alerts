@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <section id="ruvelo_security_alerts" translate="label" type="text" sortOrder="990" showInDefault="1" showInWebsite="0" showInStore="0">
+            <label>Ruvelo Security Alerts</label>
+            <tab>advanced</tab>
+            <resource>Ruvelo_SecurityAlerts::config</resource>
+            <group id="general" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Security alerts</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10" showInDefault="1" canRestore="1">
+                    <label>Enable daily check</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Once a day, by cron, the module looks up your Magento version and the Composer packages in composer.lock against public advisories (Packagist security advisories, CISA Known Exploited Vulnerabilities). <strong>Only package names and your Magento version are used to look things up; the matching happens here, on your server.</strong> No store URL, no customer data, no keys.]]></comment>
+                </field>
+                <field id="emails" translate="label comment" type="text" sortOrder="20" showInDefault="1" canRestore="1">
+                    <label>Notification emails</label>
+                    <comment>Comma-separated. Leave empty to see alerts in the admin only. Email is sent once per new finding, and again if it becomes exploited.</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="min_severity" translate="label comment" type="select" sortOrder="30" showInDefault="1" canRestore="1">
+                    <label>Minimum severity to email</label>
+                    <source_model>Ruvelo\SecurityAlerts\Model\Config\Source\Severity</source_model>
+                    <comment>Exploited vulnerabilities are always emailed. Advisories Packagist has not rated count as High.</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>
