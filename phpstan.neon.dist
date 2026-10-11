@@ -1,0 +1,16 @@
+includes:
+  - vendor/bitexpert/phpstan-magento/extension.neon
+
+parameters:
+  level: 8
+  paths:
+    - Block
+    - Console
+    - Controller
+    - Cron
+    - Exception
+    - Model
+    - Test
+  excludePaths:
+    - vendor
+  tmpDir: .phpstan.cache

@@ -1,0 +1,10 @@
+# Keep Composer installs to what a store needs.
+/.github export-ignore
+/art export-ignore
+/Test export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/.editorconfig export-ignore
+/CONTRIBUTING.md export-ignore
+/phpstan.neon.dist export-ignore
+/phpunit.xml.dist export-ignore
