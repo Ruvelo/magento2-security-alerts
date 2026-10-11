@@ -56,7 +56,7 @@
   "scripts": {
     "test": "phpunit",
     "lint": "find . -path ./vendor -prune -o -name '*.php' -print0 | xargs -0 -n1 -P4 php -l -n > /dev/null",
-    "cs": "phpcs --standard=Magento2 --extensions=php,phtml --severity=10 --ignore=vendor,Test,.phpstan.cache,.phpunit.cache .",
+    "cs": "phpcs --standard=Magento2 --extensions=php,phtml --severity=10 --ignore=vendor,Test,.github,.phpstan.cache,.phpunit.cache .",
     "analyse": "phpstan analyse --memory-limit=1G --no-progress",
     "check": ["@lint", "@cs", "@analyse", "@test"]
   },

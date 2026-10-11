@@ -53,3 +53,222 @@ jobs:
 
       - name: Unit tests
         run: vendor/bin/phpunit
+
+  install:
+    name: Real install · PHP ${{ matrix.php }} · Mage-OS ${{ matrix.mageos }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Mage-OS 2.x is Magento 2.4.8 based, 1.0.x is Magento 2.4.7 based.
+          - php: '8.3'
+            mageos: '^2.0'
+          - php: '8.2'
+            mageos: '1.0.6'
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: magento
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+      opensearch:
+        image: opensearchproject/opensearch:2.19.0
+        env:
+          discovery.type: single-node
+          plugins.security.disabled: 'true'
+          DISABLE_INSTALL_DEMO_CONFIG: 'true'
+          OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+        ports:
+          - 9200:9200
+        options: >-
+          --health-cmd="curl -fs http://localhost:9200/_cluster/health"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      ADMIN_USER: admin
+      ADMIN_PASSWORD: 'Admin12345!x'
+      BASE_URL: http://localhost:8080
+
+    steps:
+      - name: Check out the module
+        uses: actions/checkout@v4
+        with:
+          path: module
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: bcmath, ctype, curl, dom, gd, intl, mbstring, pdo_mysql, simplexml, soap, sockets, sodium, xsl, zip
+          ini-values: memory_limit=-1
+          coverage: none
+          tools: composer:v2
+
+      - name: Find the Composer cache
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-mageos-${{ matrix.php }}-${{ matrix.mageos }}-${{ hashFiles('module/composer.json') }}
+          restore-keys: composer-mageos-${{ matrix.php }}-${{ matrix.mageos }}-
+
+      - name: Create the Mage-OS project
+        run: |
+          composer create-project --repository-url=https://repo.mage-os.org/ \
+            mage-os/project-community-edition magento '${{ matrix.mageos }}' \
+            --no-install --no-interaction --no-progress
+
+      - name: Add the module from this checkout and install
+        working-directory: magento
+        run: |
+          composer config --no-interaction allow-plugins true
+          # Old Mage-OS releases pin libraries that have advisories since. Install them anyway.
+          composer config --no-interaction audit.block-insecure false
+          composer config repositories.ruvelo-module '{"type":"path","url":"../module","options":{"symlink":false}}'
+          composer require ruvelo/magento2-security-alerts:@dev --no-update --no-interaction
+          composer install --prefer-dist --no-interaction --no-progress
+          echo "--- installed core packages"
+          composer show | grep -E '^(mage-os/(product-community-edition|magento2-base|framework)|magento/(product-community-edition|magento2-base|framework)|ruvelo/) ' || true
+          composer show -s mage-os/product-community-edition | grep -iE 'versions|extra' || true
+
+      - name: Install Magento
+        working-directory: magento
+        run: |
+          bin/magento setup:install \
+            --base-url="$BASE_URL/" \
+            --db-host=127.0.0.1 --db-name=magento --db-user=root --db-password=root \
+            --admin-firstname=Ci --admin-lastname=Admin --admin-email=ci@example.com \
+            --admin-user="$ADMIN_USER" --admin-password="$ADMIN_PASSWORD" \
+            --backend-frontname=admin \
+            --language=en_US --currency=USD --timezone=UTC \
+            --use-rewrites=1 \
+            --search-engine=opensearch --opensearch-host=127.0.0.1 --opensearch-port=9200 \
+            --opensearch-index-prefix=magento2 --opensearch-timeout=15 \
+            --cleanup-database --no-interaction
+
+      - name: Disable two-factor authentication for the test
+        working-directory: magento
+        run: |
+          mods=$(bin/magento module:status --enabled | grep -E '^Magento_(AdminAdobeImsTwoFactorAuth|TwoFactorAuth)$' | tr '\n' ' ')
+          echo "disabling: $mods"
+          bin/magento module:disable $mods
+
+      - name: Enable the module and run setup:upgrade
+        working-directory: magento
+        run: |
+          bin/magento module:enable Ruvelo_SecurityAlerts
+          bin/magento setup:upgrade --no-interaction
+          bin/magento module:status Ruvelo_SecurityAlerts | tee /dev/stderr | grep -q 'enabled'
+
+      - name: The declarative schema whitelist is up to date
+        working-directory: magento
+        run: |
+          installed=vendor/ruvelo/magento2-security-alerts/etc/db_schema_whitelist.json
+          rm "$installed"
+          bin/magento setup:db-declaration:generate-whitelist --module-name=Ruvelo_SecurityAlerts
+          # Compare the content, not the final newline Magento leaves out.
+          diff -u <(jq -S . "$GITHUB_WORKSPACE/module/etc/db_schema_whitelist.json") <(jq -S . "$installed") \
+            || { echo "::error::etc/db_schema_whitelist.json is out of date, regenerate it with setup:db-declaration:generate-whitelist"; exit 1; }
+
+      - name: Compile dependency injection
+        working-directory: magento
+        run: bin/magento setup:di:compile
+
+      - name: The table exists
+        run: |
+          mysql -h 127.0.0.1 -uroot -proot magento -e 'DESCRIBE ruvelo_security_alerts_finding'
+          mysql -h 127.0.0.1 -uroot -proot magento -e 'SHOW INDEX FROM ruvelo_security_alerts_finding'
+
+      - name: What does Magento call this version?
+        working-directory: magento
+        run: |
+          bin/magento --version
+          php -r 'require "app/bootstrap.php"; $om = Magento\Framework\App\Bootstrap::create(BP, $_SERVER)->getObjectManager(); $m = $om->get(Magento\Framework\App\ProductMetadataInterface::class); echo "getName=", $m->getName(), " getVersion=", $m->getVersion(), " getEdition=", $m->getEdition(), PHP_EOL;'
+
+      - name: CLI check, with real network access
+        working-directory: magento
+        run: |
+          set +e
+          bin/magento ruvelo:security-alerts:check --json > "$RUNNER_TEMP/check.json" 2> "$RUNNER_TEMP/check.err"
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/check.err"
+          cat "$RUNNER_TEMP/check.json"
+          echo "exit code: $code"
+          python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); assert {"exploited","total","packages_checked","warnings","findings"} <= d.keys(); print("valid JSON,", d["total"], "findings,", d["packages_checked"], "packages")' "$RUNNER_TEMP/check.json"
+          [ "$code" -le 1 ] || { echo "::error::exit code $code means a source failed"; exit 1; }
+
+      - name: CLI check, dry run
+        working-directory: magento
+        run: |
+          set +e
+          bin/magento ruvelo:security-alerts:check --dry-run --json > "$RUNNER_TEMP/dry.json"
+          code=$?
+          set -e
+          echo "exit code: $code"
+          python3 -I -c 'import json,sys; json.load(open(sys.argv[1]))' "$RUNNER_TEMP/dry.json"
+          [ "$code" -le 1 ]
+
+      - name: Cron job
+        working-directory: magento
+        run: |
+          # The job is declared in crontab.xml and runs when called as cron would call it.
+          php "$GITHUB_WORKSPACE/module/.github/ci/cron.php"
+          # The scheduler itself still works with the module enabled. (A 03:17 job is only queued near its time.)
+          bin/magento cron:run --group=default
+
+      - name: Email template and notification path
+        working-directory: magento
+        run: |
+          bin/magento config:set system/smtp/disable 1
+          bin/magento config:set ruvelo_security_alerts/general/emails ci@example.com
+          php "$GITHUB_WORKSPACE/module/.github/ci/email.php"
+
+      - name: Smoke-test the admin page
+        working-directory: magento
+        run: |
+          bin/magento config:set admin/security/use_form_key 0
+          bin/magento cache:flush
+          PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8080 -t pub/ phpserver/router.php > "$RUNNER_TEMP/server.log" 2>&1 &
+          for i in $(seq 1 30); do curl -s -o /dev/null "$BASE_URL/admin" && break; sleep 1; done
+
+          jar="$RUNNER_TEMP/cookies.txt"
+          curl -s -L -c "$jar" -b "$jar" "$BASE_URL/admin" -o "$RUNNER_TEMP/login.html"
+          form_key=$(perl -ne 'if (/name="form_key"[^>]*value="([^"]+)"/ || /value="([^"]+)"[^>]*name="form_key"/) { print $1; exit }' "$RUNNER_TEMP/login.html")
+          [ -n "$form_key" ] || { echo "::error::no form_key on the login page"; head -c 2000 "$RUNNER_TEMP/login.html"; exit 1; }
+
+          curl -s -L -c "$jar" -b "$jar" -o "$RUNNER_TEMP/dashboard.html" \
+            --data-urlencode "form_key=$form_key" \
+            --data-urlencode "login[username]=$ADMIN_USER" \
+            --data-urlencode "login[password]=$ADMIN_PASSWORD" \
+            "$BASE_URL/admin"
+          grep -qi 'dashboard' "$RUNNER_TEMP/dashboard.html" || { echo "::error::admin login failed"; head -c 3000 "$RUNNER_TEMP/dashboard.html"; exit 1; }
+
+          status=$(curl -s -L -c "$jar" -b "$jar" -o "$RUNNER_TEMP/alerts.html" -w '%{http_code}' \
+            "$BASE_URL/admin/ruvelo_securityalerts/alerts/index/")
+          echo "HTTP $status"
+          [ "$status" = 200 ] || { head -c 3000 "$RUNNER_TEMP/alerts.html"; tail -n 50 "$RUNNER_TEMP/server.log"; exit 1; }
+          grep -q '<title>Security alerts' "$RUNNER_TEMP/alerts.html" || { echo "::error::page title missing"; grep -o '<title>[^<]*' "$RUNNER_TEMP/alerts.html"; exit 1; }
+          grep -q 'class="ruvelo-alerts"' "$RUNNER_TEMP/alerts.html" || { echo "::error::module block missing"; exit 1; }
+          grep -q 'Check now' "$RUNNER_TEMP/alerts.html"
+
+      - name: Magento logs on failure
+        if: failure()
+        working-directory: magento
+        run: |
+          tail -n 80 var/log/*.log 2>/dev/null || true
+          tail -n 40 var/report/* 2>/dev/null || true
