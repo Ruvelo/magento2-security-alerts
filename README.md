@@ -214,7 +214,7 @@ Isolated patches (`.patch` files from Adobe) do not change the version number or
 No. It knows what Packagist's advisory database (built on FriendsOfPHP/security-advisories) lists, and which of those CVEs CISA says are exploited. A flaw nobody has published yet, or that was never added there, is not covered. Some Adobe bulletins reach Packagist after a delay. It is an early warning, not a scanner: it does not look at your files, your admin users or your checkout scripts.
 
 **Does it work on Mage-OS?**
-It is built for it, and the framework classes it is tested against come from the Mage-OS mirror. See the note on versions below.
+Yes. CI installs it in a real Mage-OS 2.x (Magento 2.4.8 based) and 1.0.x (Magento 2.4.7 based), runs `setup:upgrade`, `setup:di:compile`, the check against the live sources and the admin page. See the note on versions below.
 
 **Does it affect store performance?**
 Nothing runs on a storefront request. The daily job makes a handful of HTTP requests. The admin message runs one indexed `SELECT` per admin page.
@@ -230,11 +230,11 @@ Yes: `--dry-run --json --fail-on=exploited`. See [Command line](#command-line).
 
 ### Versions
 
-On Mage-OS the module reads the version from `ProductMetadataInterface`, and checks it against the same Magento advisories as Adobe's builds. If the version does not look like `2.4.x`, the core is skipped and "Check now" and the CLI warn you, rather than guess.
+Mage-OS numbers its releases itself (1.x, 2.x, 3.x), but `ProductMetadataInterface::getVersion()` there returns the **Magento version the release is based on**: Mage-OS 1.0.6 reports `2.4.7-p4`, Mage-OS 2.3.0 reports `2.4.8-p5` (and `bin/magento --version` reads "Mage-OS CLI 2.3.0 (based on Magento 2.4.8-p5)"). The module uses that value, so the core is checked against the same Magento advisories as on Adobe's builds, with no mapping of its own. This was checked in a real install, not assumed. If a version still does not look like `2.4.x`, the core is skipped and "Check now" and the CLI warn you, rather than guess.
 
 ## Contributing
 
-Pull requests are welcome. Clone, `composer install`, then `composer check` runs the lint, the Magento coding standard, PHPStan level 8 and the unit tests, exactly as CI does. You don't need a Magento install. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [changelog](CHANGELOG.md).
+Pull requests are welcome. Clone, `composer install`, then `composer check` runs the lint, the Magento coding standard, PHPStan level 8 and the unit tests, exactly as CI does. You don't need a Magento install for that. CI also has an `install` job that installs the module in a real Mage-OS with MySQL and OpenSearch (about four minutes). See [CONTRIBUTING.md](CONTRIBUTING.md) and the [changelog](CHANGELOG.md).
 
 ## Credits
 
