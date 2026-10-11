@@ -1,0 +1,86 @@
+<?php
+/**
+ * @var \Ruvelo\SecurityAlerts\Block\Adminhtml\Alerts $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+$findings = $block->getFindings();
+$lastCheck = $block->getLastCheck();
+?>
+<div class="ruvelo-alerts">
+    <div class="ruvelo-alerts__bar">
+        <p class="ruvelo-alerts__status">
+            <?php if ($lastCheck !== null): ?>
+                <?= $escaper->escapeHtml(__('Last checked %1 (UTC).', $lastCheck)) ?>
+            <?php else: ?>
+                <?= $escaper->escapeHtml(__('Not checked yet.')) ?>
+            <?php endif ?>
+            <?= $escaper->escapeHtml(__('Checked daily by cron. Only package names are sent to Packagist.')) ?>
+        </p>
+        <form method="post" action="<?= $escaper->escapeUrl($block->getCheckUrl()) ?>">
+            <input type="hidden" name="form_key" value="<?= $escaper->escapeHtmlAttr($block->getFormKey()) ?>">
+            <button type="submit" class="action-primary"><span><?= $escaper->escapeHtml(__('Check now')) ?></span></button>
+        </form>
+    </div>
+
+    <?php if ($findings === []): ?>
+        <div class="message message-success">
+            <div><?= $escaper->escapeHtml(__('No known vulnerabilities affect this store. Run "Check now" to look again.')) ?></div>
+        </div>
+    <?php else: ?>
+        <div class="admin__table-wrapper">
+            <table class="data-grid">
+                <thead>
+                    <tr>
+                        <th class="data-grid-th"><?= $escaper->escapeHtml(__('Package')) ?></th>
+                        <th class="data-grid-th"><?= $escaper->escapeHtml(__('Installed')) ?></th>
+                        <th class="data-grid-th"><?= $escaper->escapeHtml(__('Advisory')) ?></th>
+                        <th class="data-grid-th"><?= $escaper->escapeHtml(__('CVE')) ?></th>
+                        <th class="data-grid-th"><?= $escaper->escapeHtml(__('Severity')) ?></th>
+                        <th class="data-grid-th"><?= $escaper->escapeHtml(__('Status')) ?></th>
+                        <th class="data-grid-th"><?= $escaper->escapeHtml(__('Fixed in')) ?></th>
+                        <th class="data-grid-th"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($findings as $finding): ?>
+                    <tr class="<?= $finding->exploited ? 'ruvelo-alerts__row--exploited' : '' ?><?= $finding->dismissed ? ' ruvelo-alerts__row--dismissed' : '' ?>">
+                        <td><?= $escaper->escapeHtml($finding->package) ?></td>
+                        <td><?= $escaper->escapeHtml($finding->installedVersion) ?></td>
+                        <td>
+                            <?php if ($finding->link !== null && $block->isSafeLink($finding->link)): ?>
+                                <a href="<?= $escaper->escapeUrl($finding->link) ?>" target="_blank" rel="noopener noreferrer"><?= $escaper->escapeHtml($finding->title) ?></a>
+                            <?php else: ?>
+                                <?= $escaper->escapeHtml($finding->title) ?>
+                            <?php endif ?>
+                        </td>
+                        <td><?= $finding->cve !== null ? $escaper->escapeHtml($finding->cve) : '&ndash;' ?></td>
+                        <td>
+                            <span class="grid-severity-<?= $finding->severityLevel()->rank() >= 3 ? 'major' : 'minor' ?>"><span><?= $escaper->escapeHtml(__($finding->severityLevel()->label())) ?><?= $finding->severity === null ? ' *' : '' ?></span></span>
+                        </td>
+                        <td>
+                            <?php if ($finding->exploited): ?>
+                                <span class="grid-severity-critical"><span><?= $escaper->escapeHtml(__('Exploited — patch now')) ?></span></span>
+                            <?php elseif ($finding->dismissed): ?>
+                                <?= $escaper->escapeHtml(__('Dismissed')) ?>
+                            <?php else: ?>
+                                <?= $escaper->escapeHtml(__('Not known to be exploited')) ?>
+                            <?php endif ?>
+                        </td>
+                        <td><?= $finding->fixedIn !== null ? $escaper->escapeHtml($finding->fixedIn) : '&ndash;' ?></td>
+                        <td>
+                            <?php if (!$finding->dismissed && $finding->id !== null): ?>
+                                <form method="post" action="<?= $escaper->escapeUrl($block->getDismissUrl()) ?>">
+                                    <input type="hidden" name="form_key" value="<?= $escaper->escapeHtmlAttr($block->getFormKey()) ?>">
+                                    <input type="hidden" name="id" value="<?= (int)$finding->id ?>">
+                                    <button type="submit" class="action-default"><span><?= $escaper->escapeHtml(__('Dismiss')) ?></span></button>
+                                </form>
+                            <?php endif ?>
+                        </td>
+                    </tr>
+                <?php endforeach ?>
+                </tbody>
+            </table>
+        </div>
+        <p class="ruvelo-alerts__note"><?= $escaper->escapeHtml(__('* Packagist has not rated this advisory, so it is treated as High.')) ?></p>
+    <?php endif ?>
+</div>

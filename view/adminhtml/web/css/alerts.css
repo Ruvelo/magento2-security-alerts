@@ -1,0 +1,29 @@
+.ruvelo-alerts__bar {
+    align-items: center;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.ruvelo-alerts__status,
+.ruvelo-alerts__note {
+    color: #75757a;
+    margin: 0;
+}
+
+.ruvelo-alerts__note {
+    margin-top: 12px;
+}
+
+.ruvelo-alerts .data-grid td {
+    vertical-align: top;
+}
+
+.ruvelo-alerts__row--exploited td:first-child {
+    box-shadow: inset 3px 0 0 #e22626;
+}
+
+.ruvelo-alerts__row--dismissed td {
+    opacity: 0.6;
+}

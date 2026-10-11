@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <head>
+        <css src="Ruvelo_SecurityAlerts::css/alerts.css"/>
+    </head>
+    <body>
+        <referenceContainer name="content">
+            <block class="Ruvelo\SecurityAlerts\Block\Adminhtml\Alerts" name="ruvelo.security.alerts" template="Ruvelo_SecurityAlerts::alerts.phtml"/>
+        </referenceContainer>
+    </body>
+</page>
