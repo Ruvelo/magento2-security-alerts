@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Security alerts, preview</title><link rel="stylesheet" href="admin.css"></head>
+<body><div class="shell">
+<div class="menu"><div class="logo"><i></i></div><div class="item">Dashboard</div><div class="item">Sales</div><div class="item">Catalog</div><div class="item">Customers</div><div class="item">Marketing</div><div class="item">Content</div><div class="item">Reports</div><div class="item">Stores</div><div class="item on">System</div></div>
+<div class="main">
+<div class="top"><b>Search</b><span>Notifications</span><b>admin</b></div>
+<div class="sysmsg critical"><strong>Exploited &mdash; patch now.</strong> 1 known vulnerability that is being exploited in the wild affects this store. <a href="#">Review the security alerts</a>.</div>
+<div class="page">
+<h1>Security alerts</h1>
+<div class="bar"><span>Last checked 2026-10-12 03:17:04 (UTC). Checked daily by cron. Only package names are sent to Packagist.</span><button class="btn">Check now</button></div>
+<table>
+<thead><tr><th>Package</th><th>Installed</th><th style="width:30%">Advisory</th><th>CVE</th><th>Severity</th><th>Status</th><th>Fixed in</th><th></th></tr></thead>
+<tbody>
+<tr class="x"><td>magento/product-community-edition</td><td>2.4.7</td><td><a href="#">Arbitrary Code Execution through Improper Restriction of XML External Entity Reference (XXE) vulnerability</a></td><td class="mono">CVE-2024-34102</td><td><span class="sev">High *</span></td><td><span class="sev crit">Exploited &mdash; patch now</span></td><td style="white-space:nowrap">2.4.7-p1</td><td><button class="btn sec">Dismiss</button></td></tr>
+<tr><td>magento/community-edition</td><td>2.4.7</td><td><a href="#">Improper Input Validation in the REST API (APSB25-88)</a></td><td class="mono">CVE-2025-54264</td><td><span class="sev">High</span></td><td>Not known to be exploited</td><td style="white-space:nowrap">2.4.7-p8</td><td><button class="btn sec">Dismiss</button></td></tr>
+<tr><td>acme/module-widgets</td><td>1.2.0</td><td><a href="#">Stored XSS in widget title</a></td><td class="mono">CVE-2099-0001</td><td><span class="sev">High</span></td><td>Not known to be exploited</td><td>1.4.2</td><td><button class="btn sec">Dismiss</button></td></tr>
+<tr><td>acme/module-reviews</td><td>3.0.1</td><td><a href="#">Reflected XSS in review filter</a></td><td class="mono">CVE-2099-0002</td><td><span class="sev minor">Medium</span></td><td style="opacity:.6">Dismissed</td><td>3.0.4</td><td></td></tr>
+</tbody></table>
+<p class="note">* Packagist has not rated this advisory, so it is treated as High.</p>
+</div></div></div></body></html>

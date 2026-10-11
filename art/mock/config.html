@@ -1,0 +1,20 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Configuration, preview</title><link rel="stylesheet" href="admin.css">
+<style>
+.cfg{background:#fff;padding:0;border:1px solid #e3e3e3}
+.cfg h2{margin:0;padding:14px 20px;font-size:16px;font-weight:600;border-bottom:1px solid #e3e3e3;background:#f8f8f8;color:#514943}
+.row{display:grid;grid-template-columns:240px 1fr;gap:24px;padding:18px 20px;border-bottom:1px solid #f0f0f0}
+.row label{text-align:right;font-weight:600;color:#303030;padding-top:6px}
+.row input,.row select{width:340px;padding:7px 10px;border:1px solid #adadad;font:14px "Open Sans",sans-serif;background:#fff}
+.row p{margin:8px 0 0;color:#666;max-width:620px;font-size:13px;line-height:1.5}
+.row .site{color:#75757a;font-size:12px}
+</style></head>
+<body><div class="shell">
+<div class="menu"><div class="logo"><i></i></div><div class="item">Dashboard</div><div class="item">Sales</div><div class="item">Catalog</div><div class="item">Customers</div><div class="item">Marketing</div><div class="item">Content</div><div class="item">Reports</div><div class="item on">Stores</div><div class="item">System</div></div>
+<div class="main"><div class="top"><b>Search</b><span>Notifications</span><b>admin</b></div>
+<div class="page"><h1>Configuration</h1>
+<div class="bar"><span>Advanced &rsaquo; Ruvelo Security Alerts</span><button class="btn">Save Config</button></div>
+<div class="cfg"><h2>Security alerts</h2>
+<div class="row"><label>Enable daily check<br><span class="site">[global]</span></label><div><select><option>Yes</option></select><p>Once a day, by cron, the module looks up your Magento version and the Composer packages in composer.lock against public advisories (Packagist security advisories, CISA Known Exploited Vulnerabilities). <strong>Only package names and your Magento version are used to look things up; the matching happens here, on your server.</strong> No store URL, no customer data, no keys.</p></div></div>
+<div class="row"><label>Notification emails<br><span class="site">[global]</span></label><div><input value="ops@shop.example, dev@agency.example"><p>Comma-separated. Leave empty to see alerts in the admin only. Email is sent once per new finding, and again if it becomes exploited.</p></div></div>
+<div class="row" style="border:0"><label>Minimum severity to email<br><span class="site">[global]</span></label><div><select><option>Medium</option></select><p>Exploited vulnerabilities are always emailed. Advisories Packagist has not rated count as High.</p></div></div>
+</div></div></div></div></body></html>

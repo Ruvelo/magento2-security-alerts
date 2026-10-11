@@ -1,0 +1,32 @@
+/* A rough imitation of the Magento 2 admin, for the README previews only. */
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.4 "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif; color: #303030; background: #f8f8f8; }
+.shell { display: flex; min-height: 100vh; }
+.menu { width: 88px; background: #373330; color: #ccc; flex: none; padding-top: 8px; }
+.menu .logo { height: 64px; display: flex; align-items: center; justify-content: center; }
+.menu .logo i { width: 34px; height: 38px; background: #eb5202; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.menu div.item { text-align: center; font-size: 11px; padding: 14px 4px; text-transform: uppercase; letter-spacing: .02em; }
+.menu div.item.on { background: #524d49; color: #fff; box-shadow: inset 3px 0 0 #eb5202; }
+.main { flex: 1; min-width: 0; }
+.top { height: 64px; background: #f8f8f8; display: flex; justify-content: flex-end; align-items: center; gap: 22px; padding: 0 30px; color: #757575; font-size: 13px; }
+.top b { font-weight: 400; color: #514943; }
+.sysmsg { margin: 0 30px 0; background: #fffbbb; border: 1px solid #fff; border-left: 0; padding: 12px 20px 12px 56px; position: relative; font-size: 14px; }
+.sysmsg.critical { background: #fae5e5; color: #5a0f0f; }
+.sysmsg.critical:before { content: "!"; position: absolute; left: 18px; top: 9px; width: 26px; height: 26px; border-radius: 50%; background: #e22626; color: #fff; text-align: center; font-weight: 700; line-height: 26px; }
+.sysmsg a { color: #007bdb; }
+.page { padding: 18px 30px 40px; }
+h1 { font: 300 26px/1.2 "Open Sans", sans-serif; margin: 6px 0 24px; color: #41362f; }
+.bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; color: #75757a; }
+.btn { background: #eb5202; color: #fff; border: 1px solid #eb5202; padding: 9px 18px; font: 600 14px "Open Sans", sans-serif; }
+.btn.sec { background: #fff; color: #514943; border-color: #adadad; padding: 5px 12px; font-weight: 600; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; background: #fff; }
+th { text-align: left; background: #5f5a56; color: #fff; font-weight: 600; padding: 12px 14px; font-size: 13px; border-right: 1px solid #8a8683; }
+td { padding: 14px; vertical-align: top; border-bottom: 1px solid #e3e3e3; background: #fff; }
+tr:nth-child(even) td { background: #f9f9f9; }
+td a { color: #007bdb; text-decoration: none; }
+tr.x td:first-child { box-shadow: inset 4px 0 0 #e22626; }
+.sev { display: inline-block; padding: 2px 9px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; background: #fff0c9; color: #8a5a00; border: 1px solid #f0cf8a; }
+.sev.crit { background: #e22626; border-color: #e22626; color: #fff; text-transform: none; letter-spacing: 0; font-size: 12.5px; }
+.sev.minor { background: #e9f0d2; color: #4c5d12; border-color: #c9d9a0; }
+.note { color: #75757a; margin-top: 12px; font-size: 13px; }
+.mono { white-space: nowrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
