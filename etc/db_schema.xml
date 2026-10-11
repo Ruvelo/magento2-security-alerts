@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+    <table name="ruvelo_security_alerts_finding" resource="default" engine="innodb" comment="Ruvelo Security Alerts: findings that currently apply">
+        <column xsi:type="int" name="finding_id" unsigned="true" nullable="false" identity="true" comment="Finding id"/>
+        <column xsi:type="varchar" name="package_name" nullable="false" length="255" comment="Composer package"/>
+        <column xsi:type="varchar" name="installed_version" nullable="false" length="64" comment="Installed version"/>
+        <column xsi:type="varchar" name="advisory_id" nullable="false" length="64" comment="Packagist advisory id"/>
+        <column xsi:type="varchar" name="title" nullable="false" length="500" comment="Advisory title"/>
+        <column xsi:type="varchar" name="link" nullable="true" length="500" comment="Advisory link"/>
+        <column xsi:type="varchar" name="cve" nullable="true" length="32" comment="CVE id"/>
+        <column xsi:type="varchar" name="severity" nullable="true" length="16" comment="Severity as reported, may be empty"/>
+        <column xsi:type="varchar" name="fixed_in" nullable="true" length="64" comment="First unaffected version"/>
+        <column xsi:type="smallint" name="exploited" unsigned="true" nullable="false" default="0" comment="1 when listed as exploited in the wild"/>
+        <column xsi:type="timestamp" name="first_seen_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="First seen"/>
+        <column xsi:type="timestamp" name="last_seen_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="Last seen"/>
+        <column xsi:type="timestamp" name="notified_at" on_update="false" nullable="true" comment="Emailed (or deliberately skipped)"/>
+        <column xsi:type="smallint" name="notified_exploited" unsigned="true" nullable="false" default="0" comment="1 when the exploited state was emailed"/>
+        <column xsi:type="timestamp" name="dismissed_at" on_update="false" nullable="true" comment="Dismissed in the admin"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="finding_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="RUVELO_SECURITY_ALERTS_FINDING_PACKAGE_NAME_ADVISORY_ID">
+            <column name="package_name"/>
+            <column name="advisory_id"/>
+        </constraint>
+        <index referenceId="RUVELO_SECURITY_ALERTS_FINDING_EXPLOITED_DISMISSED_AT" indexType="btree">
+            <column name="exploited"/>
+            <column name="dismissed_at"/>
+        </index>
+    </table>
+</schema>

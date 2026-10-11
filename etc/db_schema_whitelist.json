@@ -1,0 +1,28 @@
+{
+    "ruvelo_security_alerts_finding": {
+        "column": {
+            "finding_id": true,
+            "package_name": true,
+            "installed_version": true,
+            "advisory_id": true,
+            "title": true,
+            "link": true,
+            "cve": true,
+            "severity": true,
+            "fixed_in": true,
+            "exploited": true,
+            "first_seen_at": true,
+            "last_seen_at": true,
+            "notified_at": true,
+            "notified_exploited": true,
+            "dismissed_at": true
+        },
+        "index": {
+            "RUVELO_SECURITY_ALERTS_FINDING_EXPLOITED_DISMISSED_AT": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "RUVELO_SECURITY_ALERTS_FINDING_PACKAGE_NAME_ADVISORY_ID": true
+        }
+    }
+}

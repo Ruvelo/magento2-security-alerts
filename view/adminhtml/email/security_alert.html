@@ -1,0 +1,16 @@
+<!--@subject {{var subject}} @-->
+
+{{depend exploited_count}}
+<p style="font-size:18px;font-weight:bold;color:#b91c1c;margin:0 0 6px">Exploited — patch now</p>
+<p style="margin:0 0 16px">Everything in this section is on the CISA list of vulnerabilities attackers are using right now. Update or apply the fix before anything else.</p>
+{{var exploited_block|raw}}
+{{/depend}}
+
+{{depend other_count}}
+<p style="font-size:16px;font-weight:bold;margin:24px 0 6px">Other new findings</p>
+<p style="margin:0 0 16px">No exploitation in the wild is known for these yet.</p>
+{{var other_block|raw}}
+{{/depend}}
+
+<p style="margin:24px 0 0;color:#555">See the full list in the admin under System &rarr; Tools &rarr; Security alerts, or run <code>bin/magento ruvelo:security-alerts:check</code>.</p>
+<p style="margin:8px 0 0;color:#555">You get this email because notification emails are set under Stores &rarr; Configuration &rarr; Advanced &rarr; Ruvelo Security Alerts.</p>

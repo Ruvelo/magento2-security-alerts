@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <ruvelo_security_alerts>
+            <general>
+                <enabled>1</enabled>
+                <emails></emails>
+                <min_severity>medium</min_severity>
+            </general>
+        </ruvelo_security_alerts>
+    </default>
+</config>
