@@ -27,7 +27,9 @@ composer check
 | `composer cs` | Magento coding standard (PHPCS), errors only |
 | `composer analyse` | PHPStan level 8 with `bitexpert/phpstan-magento` |
 
-Tests never touch the network. Packagist and CISA answers come from the fixtures in `Test/Unit/_files/`, which are trimmed copies of real responses.
+The `install` job in CI is the only thing that runs the module inside Magento (Mage-OS, MySQL, OpenSearch). Its helper scripts are in `.github/ci/`. It does use the network, for the real Packagist and CISA answers.
+
+Unit tests never touch the network. Packagist and CISA answers come from the fixtures in `Test/Unit/_files/`, which are trimmed copies of real responses.
 
 ## Making a change
 

@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Email: the "Exploited — patch now" section was printed even when nothing was exploited. `{{depend}}` treats the integer `0` as set under PHP 8, so the template now switches on `has_exploited` and `has_other` (empty string when off). Found by installing the module in a real Mage-OS.
+
+### Added
+
+- CI `install` job: installs the module in Mage-OS 2.x and 1.0.x with MySQL and OpenSearch, and checks the schema whitelist, DI compilation, the table, the CLI against the live sources, the cron job, the email and the admin page.
+
 ## [1.0.0] - 2026-10-12
 
 First release.
