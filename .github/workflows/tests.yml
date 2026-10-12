@@ -10,7 +10,7 @@ jobs:
     name: Coding standard and static analysis
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -40,7 +40,7 @@ jobs:
         stability: [prefer-stable, prefer-lowest]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -104,7 +104,7 @@ jobs:
 
     steps:
       - name: Check out the module
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: module
 
