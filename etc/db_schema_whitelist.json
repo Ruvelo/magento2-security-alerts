@@ -11,6 +11,8 @@
             "severity": true,
             "fixed_in": true,
             "exploited": true,
+            "identity_key": true,
+            "aliases": true,
             "first_seen_at": true,
             "last_seen_at": true,
             "notified_at": true,

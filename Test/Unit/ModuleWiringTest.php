@@ -90,7 +90,7 @@ class ModuleWiringTest extends TestCase
                 $checked++;
             }
         }
-        $this->assertGreaterThan(8, $checked);
+        $this->assertGreaterThan(7, $checked);
     }
 
     public function testCronJobPointsAtAnExecuteMethod(): void
@@ -131,22 +131,33 @@ class ModuleWiringTest extends TestCase
         );
         $defaults = array_keys((array)$this->xml('etc/config.xml')->default->ruvelo_security_alerts->general);
 
-        $this->assertSame(['enabled', 'emails', 'min_severity'], $fields);
+        $this->assertSame(['enabled', 'emails', 'min_severity', 'source'], $fields);
         $this->assertSame($fields, $defaults);
         $this->assertSame('ruvelo_security_alerts/general/enabled', \Ruvelo\SecurityAlerts\Model\Config::XML_ENABLED);
         $this->assertSame('advanced', (string)$this->xml('etc/adminhtml/system.xml')->system->section->tab);
     }
 
-    public function testNothingInTheModuleMentionsValtry(): void
+    public function testValtryIsOnlyNamedWhereTheOwnerCanSeeAndOptOutOfIt(): void
     {
+        $allowed = ['Model/Config.php', 'Model/CoreFactory.php', 'Model/Scanner.php', 'Model/ScanResult.php', 'Model/Config/Source/AdvisorySource.php', 'etc/adminhtml/system.xml', 'etc/config.xml', 'view/adminhtml/templates/alerts.phtml'];
         $dirs = ['Block', 'Console', 'Controller', 'Cron', 'Model', 'etc', 'view', 'Exception'];
         foreach ($dirs as $dir) {
             $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(self::ROOT . '/' . $dir));
             foreach ($iterator as $file) {
-                if ($file->isFile()) {
-                    $this->assertStringNotContainsStringIgnoringCase('valtry', (string)file_get_contents($file->getPathname()));
+                if (!$file->isFile()) {
+                    continue;
+                }
+                $relative = substr((string)realpath($file->getPathname()), strlen((string)realpath(self::ROOT)) + 1);
+                if (stripos((string)file_get_contents($file->getPathname()), 'valtry') !== false) {
+                    $this->assertContains($relative, $allowed, $relative . ' names Valtry');
                 }
             }
         }
+
+        $comment = (string)$this->xml('etc/adminhtml/system.xml')->xpath('//field[@id="source"]/comment')[0];
+        foreach (['package names only, never versions', 'public feeds are used automatically', 'RUVELO_ADVISORIES_SOURCE=public'] as $disclosure) {
+            $this->assertStringContainsString($disclosure, $comment);
+        }
+        $this->assertSame('valtry', (string)$this->xml('etc/config.xml')->default->ruvelo_security_alerts->general->source);
     }
 }

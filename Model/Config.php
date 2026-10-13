@@ -11,6 +11,9 @@ class Config
     public const XML_ENABLED = 'ruvelo_security_alerts/general/enabled';
     public const XML_EMAILS = 'ruvelo_security_alerts/general/emails';
     public const XML_MIN_SEVERITY = 'ruvelo_security_alerts/general/min_severity';
+    public const XML_SOURCE = 'ruvelo_security_alerts/general/source';
+    public const SOURCE_VALTRY = 'valtry';
+    public const SOURCE_PUBLIC = 'public';
 
     /**
      * __construct.
@@ -57,5 +60,17 @@ class Config
     public function minimumSeverity(): Severity
     {
         return Severity::tryFrom((string)$this->scopeConfig->getValue(self::XML_MIN_SEVERITY)) ?? Severity::Medium;
+    }
+
+    /**
+     * Where advisories come from.
+     *
+     * @return string "valtry" (the default, with the public feeds as a fallback) or "public"
+     */
+    public function advisorySource(): string
+    {
+        return (string)$this->scopeConfig->getValue(self::XML_SOURCE) === self::SOURCE_PUBLIC
+            ? self::SOURCE_PUBLIC
+            : self::SOURCE_VALTRY;
     }
 }

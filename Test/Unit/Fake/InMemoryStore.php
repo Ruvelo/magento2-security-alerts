@@ -35,7 +35,7 @@ class InMemoryStore implements FindingStoreInterface
     public function update(Finding $finding, bool $reopen): void
     {
         foreach ($this->rows as $id => $row) {
-            if ($row['finding']->key() === $finding->key()) {
+            if ($finding->id !== null ? $id === $finding->id : $row['finding']->key() === $finding->key()) {
                 $dismissed = $reopen ? false : $row['finding']->dismissed;
                 $this->rows[$id]['finding'] = $this->with($finding, $id, $dismissed);
             }
@@ -102,7 +102,9 @@ class InMemoryStore implements FindingStoreInterface
             $f->exploited,
             $id,
             $dismissed,
-            '2026-10-12 00:00:00'
+            '2026-10-12 00:00:00',
+            $f->identity,
+            $f->aliases
         );
     }
 }

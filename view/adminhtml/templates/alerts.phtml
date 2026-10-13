@@ -5,6 +5,7 @@
  */
 $findings = $block->getFindings();
 $lastCheck = $block->getLastCheck();
+$lastSource = $block->getLastSource();
 ?>
 <div class="ruvelo-alerts">
     <div class="ruvelo-alerts__bar">
@@ -14,7 +15,10 @@ $lastCheck = $block->getLastCheck();
             <?php else: ?>
                 <?= $escaper->escapeHtml(__('Not checked yet.')) ?>
             <?php endif ?>
-            <?= $escaper->escapeHtml(__('Checked daily by cron. Only package names are sent to Packagist.')) ?>
+            <?= $escaper->escapeHtml(__('Checked daily by cron. Only package names leave your server, never versions.')) ?>
+            <?php if ($lastSource !== null): ?>
+                <?= $escaper->escapeHtml(__('Data source: %1.', __($lastSource))) ?>
+            <?php endif ?>
         </p>
         <form method="post" action="<?= $escaper->escapeUrl($block->getCheckUrl()) ?>">
             <input type="hidden" name="form_key" value="<?= $escaper->escapeHtmlAttr($block->getFormKey()) ?>">
@@ -81,6 +85,6 @@ $lastCheck = $block->getLastCheck();
                 </tbody>
             </table>
         </div>
-        <p class="ruvelo-alerts__note"><?= $escaper->escapeHtml(__('* Packagist has not rated this advisory, so it is treated as High.')) ?></p>
+        <p class="ruvelo-alerts__note"><?= $escaper->escapeHtml(__('* The advisory has no severity rating, so it is treated as High.')) ?></p>
     <?php endif ?>
 </div>

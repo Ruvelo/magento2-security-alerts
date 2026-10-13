@@ -15,6 +15,7 @@ class Checker
 {
     public const EVENT = 'ruvelo_security_alerts_found';
     public const FLAG_LAST_CHECK = 'ruvelo_security_alerts_last_check';
+    public const FLAG_LAST_SOURCE = 'ruvelo_security_alerts_last_source';
 
     /**
      * __construct.
@@ -45,6 +46,7 @@ class Checker
         $result = $this->scanner->scan();
         $changes = $this->reconciler->reconcile($result->findings);
         $this->flags->saveFlag(self::FLAG_LAST_CHECK, gmdate('Y-m-d H:i:s'));
+        $this->flags->saveFlag(self::FLAG_LAST_SOURCE, $result->source);
 
         if ($result->findings !== []) {
             $this->events->dispatch(self::EVENT, [

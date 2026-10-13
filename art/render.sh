@@ -17,5 +17,5 @@ shot() { # name, window size
 
 shot preview-grid 1280,640 grid
 shot preview-email 760,640 email
-shot preview-config 1280,560 config
+shot preview-config 1280,1000 config
 shot banner 1000,500 banner

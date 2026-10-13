@@ -136,4 +136,47 @@ class FindingRepositoryTest extends TestCase
 
         $this->assertSame([1 => 1, 2 => 0], $writes);
     }
+
+    public function testAStoredRowIsUpdatedByIdWhenASourceNamesItDifferently(): void
+    {
+        $seen = [];
+        $this->connection->method('update')->willReturnCallback(
+            static function (string $table, array $data, array $where) use (&$seen): int {
+                $seen = [$data, $where];
+
+                return 1;
+            }
+        );
+
+        $this->repository->update(Findings::make(advisory: 'GHSA-new', aliases: ['PKSA-old'])->stored(5, 'composer:acme/module-widgets:PKSA-old'), false);
+
+        $this->assertSame(['finding_id = ?' => 5], $seen[1]);
+        $this->assertSame('GHSA-new', $seen[0]['advisory_id']);
+        $this->assertSame('composer:acme/module-widgets:PKSA-old', $seen[0]['identity_key']);
+        $this->assertSame('["PKSA-old"]', $seen[0]['aliases']);
+    }
+
+    public function testTheIdentityAndAliasesComeBackFromTheRow(): void
+    {
+        $select = $this->createMock(Select::class);
+        $select->method('from')->willReturnSelf();
+        $select->method('order')->willReturnSelf();
+        $this->connection->method('select')->willReturn($select);
+        $base = [
+            'installed_version' => '1.0', 'title' => 'T', 'link' => null, 'cve' => 'CVE-2099-0001', 'severity' => null,
+            'fixed_in' => null, 'exploited' => 0, 'first_seen_at' => '2026-10-12 03:17:00', 'dismissed_at' => null,
+        ];
+        $this->connection->method('fetchAll')->willReturn([
+            $base + ['finding_id' => 1, 'package_name' => 'a/a', 'advisory_id' => 'PKSA-1', 'identity_key' => null, 'aliases' => null],
+            $base + ['finding_id' => 2, 'package_name' => 'b/b', 'advisory_id' => 'PKSA-2', 'identity_key' => 'composer:b/b:OLD', 'aliases' => '["GHSA-x","bad",1]'],
+        ]);
+
+        [$legacy, $migrated] = $this->repository->all();
+
+        $this->assertNull($legacy->identity);
+        $this->assertSame('composer:a/a:PKSA-1', $legacy->identityKey(), 'A row stored before 1.1 is known by its package and advisory id');
+        $this->assertSame([], $legacy->aliases);
+        $this->assertSame('composer:b/b:OLD', $migrated->identityKey());
+        $this->assertSame(['GHSA-x', 'bad'], $migrated->aliases);
+    }
 }

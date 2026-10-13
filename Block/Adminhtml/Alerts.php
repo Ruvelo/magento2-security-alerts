@@ -10,6 +10,7 @@ use Magento\Framework\FlagManager;
 use Ruvelo\SecurityAlerts\Model\Checker;
 use Ruvelo\SecurityAlerts\Model\Finding;
 use Ruvelo\SecurityAlerts\Model\FindingStoreInterface;
+use Ruvelo\SecurityAlerts\Model\ScanResult;
 
 /**
  * Data for the security alerts page. The page is a plain server-rendered table: see the README
@@ -54,6 +55,18 @@ class Alerts extends Template
         $value = $this->flags->getFlagData(Checker::FLAG_LAST_CHECK);
 
         return is_string($value) ? $value : null;
+    }
+
+    /**
+     * Where the advisories of the last check came from, in words.
+     *
+     * @return string|null Null before the first check
+     */
+    public function getLastSource(): ?string
+    {
+        $value = $this->flags->getFlagData(Checker::FLAG_LAST_SOURCE);
+
+        return is_string($value) && $value !== '' ? ScanResult::label($value) : null;
     }
 
     /**

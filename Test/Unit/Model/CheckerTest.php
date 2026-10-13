@@ -28,7 +28,12 @@ class CheckerTest extends TestCase
         $notifier = $this->createMock(Notifier::class);
         $notifier->expects($this->once())->method('notifyPending')->willReturn(2);
         $flags = $this->createMock(FlagManager::class);
-        $flags->expects($this->once())->method('saveFlag')->with(Checker::FLAG_LAST_CHECK, $this->isType('string'));
+        $flags->expects($this->exactly(2))->method('saveFlag')->willReturnCallback(
+            function (string $flag, mixed $value): void {
+                $this->assertContains($flag, [Checker::FLAG_LAST_CHECK, Checker::FLAG_LAST_SOURCE]);
+                $this->assertIsString($value);
+            }
+        );
         $events = $this->createMock(ManagerInterface::class);
         $events->expects($this->once())->method('dispatch')->with(
             'ruvelo_security_alerts_found',

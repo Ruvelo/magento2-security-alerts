@@ -18,6 +18,9 @@ jobs:
           extensions: mbstring, intl, bcmath, soap, gd, xsl, zip, sockets
           coverage: none
 
+      - name: Use the core from GitHub until it is on Packagist
+        run: composer config repositories.core vcs https://github.com/Ruvelo/security-advisories
+
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction --no-progress
 
@@ -47,6 +50,9 @@ jobs:
           php-version: ${{ matrix.php }}
           extensions: mbstring, intl, bcmath, soap, gd, xsl, zip, sockets
           coverage: none
+
+      - name: Use the core from GitHub until it is on Packagist
+        run: composer config repositories.core vcs https://github.com/Ruvelo/security-advisories
 
       - name: Install dependencies
         run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
@@ -138,8 +144,10 @@ jobs:
           composer config --no-interaction allow-plugins true
           # Old Mage-OS releases pin libraries that have advisories since. Install them anyway.
           composer config --no-interaction audit.block-insecure false
+          # The shared core is not on Packagist yet: take it from GitHub.
+          composer config repositories.core vcs https://github.com/Ruvelo/security-advisories
           composer config repositories.ruvelo-module '{"type":"path","url":"../module","options":{"symlink":false}}'
-          composer require ruvelo/magento2-security-alerts:@dev --no-update --no-interaction
+          composer require ruvelo/security-advisories:^1.1 ruvelo/magento2-security-alerts:@dev --no-update --no-interaction
           composer install --prefer-dist --no-interaction --no-progress
           echo "--- installed core packages"
           composer show | grep -E '^(mage-os/(product-community-edition|magento2-base|framework)|magento/(product-community-edition|magento2-base|framework)|ruvelo/) ' || true
@@ -209,7 +217,7 @@ jobs:
           cat "$RUNNER_TEMP/check.err"
           cat "$RUNNER_TEMP/check.json"
           echo "exit code: $code"
-          python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); assert {"exploited","total","packages_checked","warnings","findings"} <= d.keys(); print("valid JSON,", d["total"], "findings,", d["packages_checked"], "packages")' "$RUNNER_TEMP/check.json"
+          python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); assert {"exploited","total","packages_checked","source","warnings","findings"} <= d.keys(); assert d["source"] in ("valtry","public","mixed"); print("valid JSON,", d["total"], "findings,", d["packages_checked"], "packages, source", d["source"])' "$RUNNER_TEMP/check.json"
           [ "$code" -le 1 ] || { echo "::error::exit code $code means a source failed"; exit 1; }
 
       - name: CLI check, dry run
@@ -222,6 +230,48 @@ jobs:
           echo "exit code: $code"
           python3 -I -c 'import json,sys; json.load(open(sys.argv[1]))' "$RUNNER_TEMP/dry.json"
           [ "$code" -le 1 ]
+
+      - name: CLI check, public feeds only
+        working-directory: magento
+        run: |
+          # The admin option and the environment variable each keep every request off Valtry.
+          bin/magento config:set ruvelo_security_alerts/general/source public
+          bin/magento cache:flush
+          set +e
+          bin/magento ruvelo:security-alerts:check --dry-run --json > "$RUNNER_TEMP/public.json"
+          code=$?
+          RUVELO_ADVISORIES_SOURCE=public bin/magento config:set ruvelo_security_alerts/general/source valtry
+          bin/magento cache:flush
+          RUVELO_ADVISORIES_SOURCE=public bin/magento ruvelo:security-alerts:check --dry-run --json > "$RUNNER_TEMP/env.json"
+          code_env=$?
+          set -e
+          echo "exit codes: $code, $code_env"
+          for f in public env; do
+            python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["source"] == "public", d["source"]; print(sys.argv[1], "answered from the public feeds")' "$RUNNER_TEMP/$f.json"
+          done
+          [ "$code" -le 1 ] && [ "$code_env" -le 1 ]
+          bin/magento config:set ruvelo_security_alerts/general/source valtry
+
+      - name: Rows stored the 1.0 way are recognised after the upgrade
+        working-directory: magento
+        run: |
+          db() { mysql -h 127.0.0.1 -uroot -proot magento -N -e "$1"; }
+          total=$(db 'SELECT COUNT(*) FROM ruvelo_security_alerts_finding')
+          echo "rows from the real check above: $total"
+          # What 1.0 left behind: no identity key, no aliases, everything already emailed.
+          db "UPDATE ruvelo_security_alerts_finding SET identity_key = NULL, aliases = NULL, notified_at = NOW(), notified_exploited = exploited"
+          set +e
+          bin/magento ruvelo:security-alerts:check --json > "$RUNNER_TEMP/after.json"
+          code=$?
+          set -e
+          [ "$code" -le 1 ] || { echo "::error::exit code $code"; exit 1; }
+          after=$(db 'SELECT COUNT(*) FROM ruvelo_security_alerts_finding')
+          pending=$(db 'SELECT COUNT(*) FROM ruvelo_security_alerts_finding WHERE notified_at IS NULL')
+          unkeyed=$(db 'SELECT COUNT(*) FROM ruvelo_security_alerts_finding WHERE identity_key IS NULL')
+          echo "rows: $after, not yet emailed: $pending, without identity: $unkeyed"
+          [ "$after" = "$total" ] || { echo "::error::the upgrade check changed the rows ($total -> $after)"; exit 1; }
+          [ "$pending" = 0 ] || { echo "::error::the upgrade check would email $pending finding(s) again"; exit 1; }
+          [ "$unkeyed" = 0 ] || { echo "::error::rows were not given an identity"; exit 1; }
 
       - name: Cron job
         working-directory: magento

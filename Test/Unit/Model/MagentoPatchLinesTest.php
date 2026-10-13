@@ -6,9 +6,13 @@ namespace Ruvelo\SecurityAlerts\Test\Unit\Model;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Ruvelo\SecurityAlerts\Model\AdvisoryMatcher;
+use Ruvelo\SecurityAdvisories\Versions;
 
-class AdvisoryMatcherTest extends TestCase
+/**
+ * Magento's patch lines (2.4.7-p1) are what the shared core's version arithmetic has to get right
+ * for this module, so they stay pinned here, whatever the core's own tests say.
+ */
+class MagentoPatchLinesTest extends TestCase
 {
     /** CVE-2024-34102, "CosmicSting", as Packagist lists it. */
     private const COSMICSTING = '<2.4.4|>=2.4.4,<2.4.4-p9|>=2.4.5,<2.4.5-p8|>=2.4.6,<2.4.6-p6|>=2.4.7,<2.4.7-p1';
@@ -41,7 +45,7 @@ class AdvisoryMatcherTest extends TestCase
     #[DataProvider('affected')]
     public function testAffects(string $version, string $constraint, bool $expected): void
     {
-        $this->assertSame($expected, (new AdvisoryMatcher())->affects($version, $constraint));
+        $this->assertSame($expected, Versions::affects($version, $constraint));
     }
 
     /**
@@ -55,7 +59,7 @@ class AdvisoryMatcherTest extends TestCase
             'a beta is fixed by the first patch' => ['2.4.7-beta1', self::WITH_EXACT, '2.4.7-p8'],
             'nothing to follow for an exact release' => ['2.4.7', '=2.4.7', null],
             'a third-party range' => ['1.2.0', '>=1.0.0,<1.4.2', '1.4.2'],
-            'less-or-equal bound is not a fix version' => ['1.2.0', '<=1.4.2', null],
+            'a bound that is the last affected release is not a fix version' => ['1.2.0', '<=1.4.2', '>1.4.2'],
             'not affected at all' => ['3.0.0', '>=1.0.0,<1.4.2', null],
         ];
     }
@@ -63,6 +67,6 @@ class AdvisoryMatcherTest extends TestCase
     #[DataProvider('fixes')]
     public function testFixedIn(string $version, string $constraint, ?string $expected): void
     {
-        $this->assertSame($expected, (new AdvisoryMatcher())->fixedIn($version, $constraint));
+        $this->assertSame($expected, Versions::fixedIn($version, $constraint));
     }
 }

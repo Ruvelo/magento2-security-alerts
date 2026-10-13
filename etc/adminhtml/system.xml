@@ -10,7 +10,7 @@
                 <field id="enabled" translate="label comment" type="select" sortOrder="10" showInDefault="1" canRestore="1">
                     <label>Enable daily check</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <comment><![CDATA[Once a day, by cron, the module looks up your Magento version and the Composer packages in composer.lock against public advisories (Packagist security advisories, CISA Known Exploited Vulnerabilities). <strong>Only package names and your Magento version are used to look things up; the matching happens here, on your server.</strong> No store URL, no customer data, no keys.]]></comment>
+                    <comment><![CDATA[Once a day, by cron, the module looks up your Magento version and the Composer packages in composer.lock against security advisories (Packagist and CISA Known Exploited Vulnerabilities, by default through Valtry's Advisory API). <strong>Only package names leave your server, never versions; the matching happens here.</strong> No store URL, no customer data, no keys.]]></comment>
                 </field>
                 <field id="emails" translate="label comment" type="text" sortOrder="20" showInDefault="1" canRestore="1">
                     <label>Notification emails</label>
@@ -23,6 +23,14 @@
                     <label>Minimum severity to email</label>
                     <source_model>Ruvelo\SecurityAlerts\Model\Config\Source\Severity</source_model>
                     <comment>Exploited vulnerabilities are always emailed. Advisories Packagist has not rated count as High.</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="source" translate="label comment" type="select" sortOrder="40" showInDefault="1" canRestore="1">
+                    <label>Advisory source</label>
+                    <source_model>Ruvelo\SecurityAlerts\Model\Config\Source\AdvisorySource</source_model>
+                    <comment><![CDATA[<strong>Valtry</strong> (default) asks Valtry's Advisory API, which serves the same Packagist, OSV and CISA data from one request. It receives <strong>package names only, never versions</strong>, and every answer is signed and verified here. If Valtry is unreachable, slow or answers wrongly, the public feeds are used automatically. <strong>Public feeds only</strong> never contacts Valtry: the module asks Packagist and CISA directly. Setting the environment variable <code>RUVELO_ADVISORIES_SOURCE=public</code> does the same and wins over this setting.]]></comment>
                     <depends>
                         <field id="enabled">1</field>
                     </depends>

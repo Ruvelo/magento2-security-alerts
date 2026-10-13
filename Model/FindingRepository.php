@@ -49,11 +49,11 @@ class FindingRepository implements FindingStoreInterface
         if ($reopen) {
             $data['dismissed_at'] = null;
         }
-        $this->connection()->update(
-            $this->table(),
-            $data,
-            ['package_name = ?' => $finding->package, 'advisory_id = ?' => $finding->advisoryId]
-        );
+        // A row is found by its id; the advisory id is what a source calls it now, and may change.
+        $where = $finding->id !== null
+            ? ['finding_id = ?' => $finding->id]
+            : ['package_name = ?' => $finding->package, 'advisory_id = ?' => $finding->advisoryId];
+        $this->connection()->update($this->table(), $data, $where);
     }
 
     /**
@@ -154,7 +154,9 @@ class FindingRepository implements FindingStoreInterface
                 (int)$row['exploited'] === 1,
                 (int)$row['finding_id'],
                 $row['dismissed_at'] !== null,
-                (string)$row['first_seen_at']
+                (string)$row['first_seen_at'],
+                ($row['identity_key'] ?? null) !== null && $row['identity_key'] !== '' ? (string)$row['identity_key'] : null,
+                $this->decodeAliases($row['aliases'] ?? null)
             );
         }
         usort(
@@ -186,7 +188,22 @@ class FindingRepository implements FindingStoreInterface
             'severity' => $finding->severity,
             'fixed_in' => $finding->fixedIn,
             'exploited' => $finding->exploited ? 1 : 0,
+            'identity_key' => $finding->identityKey(),
+            'aliases' => $finding->aliases === [] ? null : (string)json_encode(array_values($finding->aliases)),
         ];
+    }
+
+    /**
+     * Decode aliases.
+     *
+     * @param mixed $json
+     * @return list<string>
+     */
+    private function decodeAliases(mixed $json): array
+    {
+        $aliases = is_string($json) && $json !== '' ? json_decode($json, true) : null;
+
+        return is_array($aliases) ? array_values(array_filter($aliases, 'is_string')) : [];
     }
 
     /**

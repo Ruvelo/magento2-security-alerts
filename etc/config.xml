@@ -6,6 +6,7 @@
                 <enabled>1</enabled>
                 <emails></emails>
                 <min_severity>medium</min_severity>
+                <source>valtry</source>
             </general>
         </ruvelo_security_alerts>
     </default>

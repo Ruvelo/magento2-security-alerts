@@ -46,4 +46,19 @@ class ConfigTest extends TestCase
         $this->assertTrue($this->config([Config::XML_ENABLED => '1'])->isEnabled());
         $this->assertFalse($this->config([])->isEnabled());
     }
+
+    public function testTheAdvisorySourceIsValtryUnlessTheOwnerOptsOut(): void
+    {
+        $this->assertSame('valtry', $this->config([])->advisorySource());
+        $this->assertSame('valtry', $this->config([Config::XML_SOURCE => 'valtry'])->advisorySource());
+        $this->assertSame('valtry', $this->config([Config::XML_SOURCE => 'something else'])->advisorySource());
+        $this->assertSame('public', $this->config([Config::XML_SOURCE => 'public'])->advisorySource());
+    }
+
+    public function testTheSourceOptionsAreTheTwoTheDisclosureDescribes(): void
+    {
+        $options = (new \Ruvelo\SecurityAlerts\Model\Config\Source\AdvisorySource())->toOptionArray();
+
+        $this->assertSame(['valtry', 'public'], array_column($options, 'value'));
+    }
 }

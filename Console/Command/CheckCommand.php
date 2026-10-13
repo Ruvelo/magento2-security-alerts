@@ -88,6 +88,7 @@ class CheckCommand extends Command
                 'exploited' => count($result->exploited()),
                 'total' => count($result->findings),
                 'packages_checked' => $result->packagesChecked,
+                'source' => $result->source,
                 'warnings' => $result->warnings,
                 'findings' => array_map(static fn (Finding $f): array => $f->toArray(), $result->findings),
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
@@ -115,6 +116,7 @@ class CheckCommand extends Command
         }
         if ($result->findings === []) {
             $output->writeln(sprintf('No known vulnerabilities found in %d packages.', $result->packagesChecked));
+            $output->writeln(sprintf('Data source: %s.', $result->sourceLabel()));
 
             return;
         }
@@ -140,5 +142,6 @@ class CheckCommand extends Command
             count($result->exploited()),
             $result->packagesChecked
         ));
+        $output->writeln(sprintf('Data source: %s.', $result->sourceLabel()));
     }
 }

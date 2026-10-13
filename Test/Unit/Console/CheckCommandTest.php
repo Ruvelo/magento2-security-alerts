@@ -25,9 +25,9 @@ class CheckCommandTest extends TestCase
      * @param list<string> $warnings
      * @return array{CommandTester, Checker&MockObject, Scanner&MockObject}
      */
-    private function tester(array $findings, ?SourceException $error = null, array $warnings = []): array
+    private function tester(array $findings, ?SourceException $error = null, array $warnings = [], string $source = 'valtry'): array
     {
-        $result = new ScanResult($findings, $warnings, 42);
+        $result = new ScanResult($findings, $warnings, 42, $source);
         $checker = $this->createMock(Checker::class);
         $scanner = $this->createMock(Scanner::class);
         if ($error !== null) {
@@ -111,6 +111,27 @@ class CheckCommandTest extends TestCase
         $this->assertTrue($data['findings'][0]['exploited']);
         $this->assertNull($data['findings'][1]['severity']);
         $this->assertSame('high', $data['findings'][1]['severity_level']);
+    }
+
+    public function testTheSummaryNamesTheDataSource(): void
+    {
+        [$clean] = $this->tester([], null, [], 'valtry');
+        [$found] = $this->tester([Findings::make()], null, [], 'public');
+
+        $clean->execute([]);
+        $found->execute([]);
+
+        $this->assertStringContainsString('Data source: Valtry Advisory API.', $clean->getDisplay());
+        $this->assertStringContainsString('Data source: Public feeds (Packagist, CISA).', $found->getDisplay());
+    }
+
+    public function testJsonSaysWhichSourceAnswered(): void
+    {
+        [$tester] = $this->tester([], null, [], 'mixed');
+
+        $tester->execute(['--json' => true]);
+
+        $this->assertSame('mixed', json_decode($tester->getDisplay(), true, 512, JSON_THROW_ON_ERROR)['source']);
     }
 
     public function testDryRunOnlyScans(): void

@@ -11,6 +11,8 @@
         <column xsi:type="varchar" name="severity" nullable="true" length="16" comment="Severity as reported, may be empty"/>
         <column xsi:type="varchar" name="fixed_in" nullable="true" length="64" comment="First unaffected version"/>
         <column xsi:type="smallint" name="exploited" unsigned="true" nullable="false" default="0" comment="1 when listed as exploited in the wild"/>
+        <column xsi:type="varchar" name="identity_key" nullable="true" length="384" comment="Key the finding was first stored under, empty for rows stored before 1.1"/>
+        <column xsi:type="text" name="aliases" nullable="true" comment="Other ids for the same vulnerability, as JSON"/>
         <column xsi:type="timestamp" name="first_seen_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="First seen"/>
         <column xsi:type="timestamp" name="last_seen_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="Last seen"/>
         <column xsi:type="timestamp" name="notified_at" on_update="false" nullable="true" comment="Emailed (or deliberately skipped)"/>

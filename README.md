@@ -60,30 +60,39 @@ bin/magento setup:upgrade
 - **A fix version.** For each finding the module works out the first version that is not affected, following Magento's patch lines (`2.4.7` → `2.4.7-p1`).
 - **Admin, email, CLI and an event.** A page, one system message, a transactional email, `bin/magento ruvelo:security-alerts:check` for CI, and an event for your own tooling.
 - **Admin only.** Nothing is added to the storefront, so Luma, Hyvä and headless setups are all the same to it. It adds no JavaScript to your pages and sends no request from a visitor's browser.
-- **Free sources, no keys.** Packagist's security advisories API and the CISA catalogue, both public.
+- **No keys.** By default the advisories come from Valtry's signed Advisory API (package names only, never versions), with Packagist and CISA used directly as the automatic fallback, or as the only source if you choose [public feeds only](#what-it-sends).
 - **Cheap.** A handful of HTTPS requests a day.
 
 Watching many stores? [Valtry](https://valtry.co.uk/?utm_source=ruvelo&utm_medium=github&utm_campaign=magento2-security-alerts) checks every site from the outside, daily.
 
 ## What it sends
 
-Only **package names** leave your server, to `packagist.org` (and, for the exploited list, a plain download from `cisa.gov`). Versions are matched on your server, so nobody learns which version you run. No store URL, no customer or order data, no admin users, no account, no keys.
+Only **package names** leave your server. Versions are matched on your server, so nobody learns which version you run. No store URL, no customer or order data, no admin users, no account, no keys.
 
-| Request | Sent | Why |
+By default a check asks **[Valtry's Advisory API](https://valtry.co.uk/docs/api/advisories)** first, and **Packagist and CISA directly** whenever Valtry can't answer. Both give the same findings: Valtry serves the same Packagist and CISA data, normalised, from one request.
+
+| Path | Sent | Why |
 |---|---|---|
-| `POST https://packagist.org/api/security-advisories/` | package names from `composer.lock`, plus the two Magento core package names | to get the advisories for them |
-| `GET https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json` | nothing | to learn which CVEs are exploited |
+| `POST https://valtry.co.uk/api/advisories/v1/query` (default) | package names from `composer.lock`, plus the two Magento core package names, and a random nonce | to get the advisories for them, and which are exploited |
+| `POST https://packagist.org/api/security-advisories/` (fallback, or public feeds only) | the same package names | to get the advisories for them |
+| `GET https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json` (fallback, or public feeds only) | nothing | to learn which CVEs are exploited |
 
-The `magento/module-*`, `magento/theme-*`, `magento/language-*` and `mage-os/…` equivalents are not sent: the core is checked once, as `magento/product-community-edition` and `magento/community-edition`. `require-dev` packages in `composer.lock` are not sent either. Your server's address is visible to Packagist and CISA, as it is for any request.
+- **Never versions.** Not to Valtry, not to Packagist. Valtry says it doesn't log or store the names it is sent, or pair them with your address; its terms are on [the API page](https://valtry.co.uk/docs/api/advisories).
+- **Signed answers.** Every answer from Valtry carries an Ed25519 signature that is verified against keys pinned in the code (`ext-sodium`, which PHP bundles), and must echo the request's nonce and cover every name asked about. A hijacked DNS record, an intercepting proxy or a replayed old answer is refused.
+- **Automatic fallback.** If Valtry can't be reached within 5 seconds, answers with an error or an answer that doesn't verify, or says its own data is out of date, that check uses Packagist and CISA directly, and Valtry is left alone for five minutes. The CLI and the admin page say which source answered.
+- **Opting out.** Set **Advisory source** to *Public feeds only* (Stores → Configuration → Advanced → Ruvelo Security Alerts), and the module never contacts Valtry. Setting the environment variable `RUVELO_ADVISORIES_SOURCE=public` does the same and wins over the setting, so a server's owner can opt out without touching the admin.
 
-It does not install, change or update anything, and it never writes outside its own table.
+The `magento/module-*`, `magento/theme-*`, `magento/language-*` and `mage-os/…` equivalents are not sent: the core is checked once, as `magento/product-community-edition` and `magento/community-edition`. `require-dev` packages in `composer.lock` are not sent either. Your server's address is visible to whoever answers, as it is for any request.
+
+It does not install, change or update anything, and it never writes outside its own table and a small cache under `var/ruvelo_security_alerts/`.
 
 ## Requirements
 
 - Magento Open Source 2.4.7 or 2.4.8, or Mage-OS, on PHP 8.2 to 8.4. Adobe Commerce is checked against the same advisories.
 - A `composer.lock` at the Magento root (the usual Composer install). Without one, only the core is checked, and "Check now" and the CLI warn you.
 - Cron running, for the daily check. The "Check now" button and the CLI work without it.
-- Outbound HTTPS to `packagist.org` and `www.cisa.gov`.
+- Outbound HTTPS to `valtry.co.uk` (unless you choose public feeds only), and `packagist.org` and `www.cisa.gov` for the fallback or public-only path.
+- `ext-curl`, and `ext-sodium` to verify Valtry's answers (without it the public feeds are used).
 
 ## Install
 
@@ -94,7 +103,9 @@ bin/magento setup:upgrade
 bin/magento cache:flush
 ```
 
-`setup:upgrade` creates one table, `ruvelo_security_alerts_finding`, through declarative schema. Then run the first check:
+The module runs on [`ruvelo/security-advisories`](https://github.com/Ruvelo/security-advisories), the core shared by Ruvelo's security alerts. Until that is on Packagist, tell Composer where to find it first: `composer config repositories.ruvelo-core vcs https://github.com/Ruvelo/security-advisories`.
+
+`setup:upgrade` creates one table, `ruvelo_security_alerts_finding`, through declarative schema (an upgrade from 1.0 adds two nullable columns, and recognises every finding it already knows, so nothing is emailed again). Then run the first check:
 
 ```bash
 bin/magento ruvelo:security-alerts:check
@@ -116,7 +127,7 @@ bin/magento ruvelo:security-alerts:check [--json] [--fail-on=exploited|any] [--d
 | `--fail-on=any` | Exit with code `1` if there is any finding |
 | `--dry-run` | Only report: no stored changes, no email, no event |
 
-Exit codes: `0` fine, `1` a finding matched `--fail-on`, `2` a source could not be reached or an option is wrong. For a deploy pipeline:
+`source` is `valtry`, `public` or `mixed`, and the text summary ends with a line such as `Data source: Valtry Advisory API.` Exit codes: `0` fine, `1` a finding matched `--fail-on`, `2` a source could not be reached or an option is wrong. For a deploy pipeline:
 
 ```bash
 bin/magento ruvelo:security-alerts:check --dry-run --json --fail-on=exploited > alerts.json
@@ -129,6 +140,7 @@ JSON shape:
   "exploited": 1,
   "total": 2,
   "packages_checked": 188,
+  "source": "valtry",
   "warnings": [],
   "findings": [
     {
@@ -156,8 +168,9 @@ Stores → Configuration → Advanced → **Ruvelo Security Alerts**.
 | Enable daily check | Yes | Turns off the cron job, email and the admin message. The CLI and "Check now" still work |
 | Notification emails | empty | Comma-separated. Empty means admin only |
 | Minimum severity to email | Medium | Exploited findings are always emailed |
+| Advisory source | Valtry | *Valtry (default)* or *Public feeds only*. See [What it sends](#what-it-sends) |
 
-Packagist leaves most Magento advisories **unrated**. The module treats an unrated advisory as **High**, because those are mostly Adobe bulletins, and says so on the page ("not rated"). The minimum severity is applied when a finding is first seen: a finding below it is not emailed later if you lower the setting, but it stays on the page.
+Most Magento advisories are **unrated**. The module treats an unrated advisory as **High**, because those are mostly Adobe bulletins, and says so on the page ("not rated"). The minimum severity is applied when a finding is first seen: a finding below it is not emailed later if you lower the setting, but it stays on the page.
 
 ACL resources, under System → Permissions → User Roles:
 
@@ -202,7 +215,7 @@ The event is not dispatched for `--dry-run`, or when nothing applies.
 ## FAQ
 
 **Does it send my Magento version, my URL or my customers' data anywhere?**
-No. Package names go to Packagist, and the matching of versions happens on your server. See [What it sends](#what-it-sends).
+No. Package names go to Valtry (or Packagist, if you choose public feeds only), and the matching of versions happens on your server. See [What it sends](#what-it-sends).
 
 **Does it patch anything?**
 No. It tells you what to patch. Applying Adobe's isolated patches and hotfixes is still your job (or your agency's).
@@ -211,7 +224,7 @@ No. It tells you what to patch. Applying Adobe's isolated patches and hotfixes i
 Isolated patches (`.patch` files from Adobe) do not change the version number or `composer.lock`, so the module cannot see them. If you applied the patch for a finding, press "Dismiss" on it.
 
 **Is the list complete?**
-No. It knows what Packagist's advisory database (built on FriendsOfPHP/security-advisories) lists, and which of those CVEs CISA says are exploited. A flaw nobody has published yet, or that was never added there, is not covered. Some Adobe bulletins reach Packagist after a delay. It is an early warning, not a scanner: it does not look at your files, your admin users or your checkout scripts.
+No. It knows what Packagist's advisory database (built on FriendsOfPHP/security-advisories) lists, which is also what Valtry serves for Composer packages, and which of those CVEs CISA says are exploited. A flaw nobody has published yet, or that was never added there, is not covered. Some Adobe bulletins reach Packagist after a delay. It is an early warning, not a scanner: it does not look at your files, your admin users or your checkout scripts.
 
 **Does it work on Mage-OS?**
 Yes. CI installs it in a real Mage-OS 2.x (Magento 2.4.8 based) and 1.0.x (Magento 2.4.7 based), runs `setup:upgrade`, `setup:di:compile`, the check against the live sources and the admin page. See the note on versions below.
@@ -230,7 +243,7 @@ Yes: `--dry-run --json --fail-on=exploited`. See [Command line](#command-line).
 
 ### Versions
 
-Mage-OS numbers its releases itself (1.x, 2.x, 3.x), but `ProductMetadataInterface::getVersion()` there returns the **Magento version the release is based on**: Mage-OS 1.0.6 reports `2.4.7-p4`, Mage-OS 2.3.0 reports `2.4.8-p5` (and `bin/magento --version` reads "Mage-OS CLI 2.3.0 (based on Magento 2.4.8-p5)"). The module uses that value, so the core is checked against the same Magento advisories as on Adobe's builds, with no mapping of its own. This was checked in a real install, not assumed. If a version still does not look like `2.4.x`, the core is skipped and "Check now" and the CLI warn you, rather than guess.
+Mage-OS numbers its releases itself (1.x, 2.x, 3.x), but `ProductMetadataInterface::getVersion()` there returns the **Magento version the release is based on**: Mage-OS 1.0.6 reports `2.4.7-p4`, Mage-OS 2.3.0 reports `2.4.8-p5` (and `bin/magento --version` reads "Mage-OS CLI 2.3.0 (based on Magento 2.4.8-p5)"). The module uses that value (the Mage-OS release number never reaches the lookup), so the core is checked against the same Magento advisories as on Adobe's builds, with no mapping of its own. This was checked in a real install, not assumed. If a version still does not look like `2.4.x`, the core is skipped and "Check now" and the CLI warn you, rather than guess.
 
 ## Contributing
 
@@ -240,7 +253,7 @@ Pull requests are welcome. Clone, `composer install`, then `composer check` runs
 
 Built by [François Bultez](https://github.com/francoisbultez) at [Valtry](https://valtry.co.uk/?utm_source=ruvelo&utm_medium=github&utm_campaign=magento2-security-alerts), the website security scanner, and everyone who [contributes](https://github.com/Ruvelo/magento2-security-alerts/graphs/contributors).
 
-Advisory data comes from the [Packagist security advisories API](https://packagist.org/apidoc#list-security-advisories) and [FriendsOfPHP/security-advisories](https://github.com/FriendsOfPHP/security-advisories). The list of exploited vulnerabilities is the [CISA KEV catalogue](https://www.cisa.gov/known-exploited-vulnerabilities-catalog).
+Advisories come from [Valtry's Advisory API](https://valtry.co.uk/docs/api/advisories) or, directly, from the [Packagist security advisories API](https://packagist.org/apidoc#list-security-advisories) and [FriendsOfPHP/security-advisories](https://github.com/FriendsOfPHP/security-advisories). The list of exploited vulnerabilities is the [CISA KEV catalogue](https://www.cisa.gov/known-exploited-vulnerabilities-catalog).
 
 ## License
 

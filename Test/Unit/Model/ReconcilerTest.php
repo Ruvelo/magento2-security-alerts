@@ -114,4 +114,56 @@ class ReconcilerTest extends TestCase
 
         $this->assertSame('1.3.0', $this->store->all()[0]->installedVersion);
     }
+
+    public function testARenamedAdvisoryIsRecognisedByItsCveAndKeepsItsIdentity(): void
+    {
+        $this->reconciler->reconcile([Findings::make(advisory: 'PKSA-1', cve: 'CVE-2099-1111')]);
+        $this->store->markNotified($this->store->all());
+
+        $changes = $this->reconciler->reconcile([Findings::make(advisory: 'GHSA-aaaa', cve: 'CVE-2099-1111')]);
+
+        $this->assertSame([], $changes->new);
+        $this->assertSame(0, $changes->resolved);
+        $this->assertCount(1, $this->store->all());
+        $row = $this->store->all()[0];
+        $this->assertSame('GHSA-aaaa', $row->advisoryId, 'The row shows the advisory as it is named now');
+        $this->assertSame('composer:acme/module-widgets:PKSA-1', $row->identityKey(), 'and is still known by the key it was first stored under');
+        $this->assertSame([], $this->store->pendingNotification());
+    }
+
+    public function testARenamedAdvisoryIsRecognisedByAnAliasOnTheNextRun(): void
+    {
+        $this->reconciler->reconcile([Findings::make(advisory: 'PKSA-1', cve: null, aliases: ['GHSA-bbbb'])]);
+        $this->store->markNotified($this->store->all());
+
+        $changes = $this->reconciler->reconcile([Findings::make(advisory: 'GHSA-bbbb', cve: null)]);
+
+        $this->assertSame([], $changes->new);
+        $this->assertSame([], $this->store->pendingNotification());
+    }
+
+    public function testTwoRowsForOneVulnerabilityCollapseWithoutNews(): void
+    {
+        $this->reconciler->reconcile([Findings::make(advisory: 'PKSA-1', cve: 'CVE-2099-2222')]);
+        $this->store->insert(Findings::make(advisory: 'GHSA-cccc', cve: 'CVE-2099-2222'));
+        $this->store->markNotified($this->store->all());
+
+        $changes = $this->reconciler->reconcile([Findings::make(advisory: 'PKSA-1', cve: 'CVE-2099-2222')]);
+
+        $this->assertSame([], $changes->new);
+        $this->assertCount(1, $this->store->all());
+        $this->assertSame([], $this->store->pendingNotification());
+    }
+
+    public function testARenamedFindingThatBecomesExploitedIsStillNews(): void
+    {
+        $this->reconciler->reconcile([Findings::make(advisory: 'PKSA-1', cve: 'CVE-2099-3333')]);
+        $this->store->markNotified($this->store->all());
+
+        $changes = $this->reconciler->reconcile([Findings::make(advisory: 'GHSA-dddd', cve: 'CVE-2099-3333', exploited: true)]);
+
+        $this->assertSame([], $changes->new);
+        $this->assertCount(1, $changes->becameExploited);
+        $this->assertCount(1, $this->store->pendingNotification());
+    }
 }

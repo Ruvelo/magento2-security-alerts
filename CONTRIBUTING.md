@@ -4,7 +4,7 @@ Thanks for helping! Bug reports, false positives, docs fixes and features are al
 
 ## Before you start
 
-- **A wrong or missing finding:** [open an issue](https://github.com/Ruvelo/magento2-security-alerts/issues/new/choose) with the package, the installed version and the advisory id. Matching rules come from Packagist, so an advisory that is wrong at the source should be fixed in [FriendsOfPHP/security-advisories](https://github.com/FriendsOfPHP/security-advisories) too.
+- **A wrong or missing finding:** [open an issue](https://github.com/Ruvelo/magento2-security-alerts/issues/new/choose) with the package, the installed version and the advisory id. Matching rules come from the shared core ([ruvelo/security-advisories](https://github.com/Ruvelo/security-advisories)) and the advisory data from Packagist, so a wrong match belongs in the core, and an advisory that is wrong at the source should be fixed in [FriendsOfPHP/security-advisories](https://github.com/FriendsOfPHP/security-advisories) too.
 - **Features:** open an issue first if it's more than a small change, so we can agree on the shape before you spend time on it.
 - **Security issues:** don't open an issue. See [SECURITY.md](https://github.com/Ruvelo/.github/blob/main/SECURITY.md).
 
@@ -12,8 +12,11 @@ Thanks for helping! Bug reports, false positives, docs fixes and features are al
 
 You need PHP 8.2+ and Composer. You do not need a Magento install or a database: the Magento classes come from the public [Mage-OS Composer mirror](https://repo.mage-os.org/) as dev dependencies, and the tests mock everything else.
 
+The module requires `ruvelo/security-advisories`, which is not on Packagist yet, so point Composer at GitHub first (this is not committed into `composer.json`; CI does the same):
+
 ```bash
 git clone https://github.com/<you>/magento2-security-alerts && cd magento2-security-alerts
+composer config repositories.core vcs https://github.com/Ruvelo/security-advisories
 composer install
 composer check
 ```
@@ -29,7 +32,7 @@ composer check
 
 The `install` job in CI is the only thing that runs the module inside Magento (Mage-OS, MySQL, OpenSearch). Its helper scripts are in `.github/ci/`. It does use the network, for the real Packagist and CISA answers.
 
-Unit tests never touch the network. Packagist and CISA answers come from the fixtures in `Test/Unit/_files/`, which are trimmed copies of real responses.
+Unit tests never touch the network. Packagist, CISA and Valtry answers come from `Test/Unit/Fake/FakeHttp.php`, built on the fixtures in `Test/Unit/_files/` (trimmed copies of real responses); Valtry's are signed with a key made for the test.
 
 ## Making a change
 
@@ -43,10 +46,10 @@ Unit tests never touch the network. Packagist and CISA answers come from the fix
 ## Where things live
 
 ```
-Model/Scanner.php            Version + lock file + advisories + CISA list => findings
-Model/AdvisoryMatcher.php    Constraint matching and "fixed in" with composer/semver
-Model/Source/                Packagist and CISA clients
-Model/Reconciler.php         What is new, what became exploited, what is resolved
+Model/Scanner.php            Magento's part: version + composer.lock => findings, core editions deduped
+Model/CoreFactory.php        Wires the shared core: HTTP, cache, Valtry first and the public feeds as fallback
+Model/Packages/              What is installed: composer.lock without the bundled modules, plus the core
+Model/Reconciler.php         What is new, what became exploited, what is resolved (the core decides, rows keep their identity)
 Model/Notifier.php           The email
 Model/System/                The one admin system message
 Console/, Cron/, Controller/ The ways to run a check, and the admin page's actions

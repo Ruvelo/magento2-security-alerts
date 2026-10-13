@@ -1,13 +1,6 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
     <preference for="Ruvelo\SecurityAlerts\Model\FindingStoreInterface" type="Ruvelo\SecurityAlerts\Model\FindingRepository"/>
-    <preference for="Ruvelo\SecurityAlerts\Model\Http\FetcherInterface" type="Ruvelo\SecurityAlerts\Model\Http\CurlFetcher"/>
-    <type name="Ruvelo\SecurityAlerts\Model\Http\CurlFetcher">
-        <arguments>
-            <!-- A fresh client each time: Curl keeps headers and options between requests. -->
-            <argument name="client" xsi:type="object" shared="false">Magento\Framework\HTTP\Client\Curl</argument>
-        </arguments>
-    </type>
     <type name="Magento\Framework\Console\CommandListInterface">
         <arguments>
             <argument name="commands" xsi:type="array">

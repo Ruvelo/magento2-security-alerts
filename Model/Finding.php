@@ -24,6 +24,8 @@ class Finding
      * @param int|null $id Row id, once stored
      * @param bool $dismissed Dismissed in the admin
      * @param string|null $firstSeenAt
+     * @param string|null $identity The key the row was first stored under, when it differs from the one derived from the advisory id
+     * @param list<string> $aliases Other ids for the same vulnerability, as the sources named them
      */
     public function __construct(
         public readonly string $package,
@@ -37,7 +39,9 @@ class Finding
         public readonly bool $exploited = false,
         public readonly ?int $id = null,
         public readonly bool $dismissed = false,
-        public readonly ?string $firstSeenAt = null
+        public readonly ?string $firstSeenAt = null,
+        public readonly ?string $identity = null,
+        public readonly array $aliases = []
     ) {
     }
 
@@ -49,6 +53,27 @@ class Finding
     public function key(): string
     {
         return $this->package . '|' . $this->advisoryId;
+    }
+
+    /**
+     * The key the shared core knows this finding by: ecosystem, package and the advisory id as named now.
+     *
+     * @return string
+     */
+    public function coreKey(): string
+    {
+        return 'composer:' . $this->package . ':' . $this->advisoryId;
+    }
+
+    /**
+     * What the finding has been stored under since it was first seen. It stays put when a source
+     * later names the same advisory differently, so nothing is mistaken for new.
+     *
+     * @return string
+     */
+    public function identityKey(): string
+    {
+        return $this->identity ?? $this->coreKey();
     }
 
     /**
@@ -81,7 +106,36 @@ class Finding
             $exploited,
             $this->id,
             $this->dismissed,
-            $this->firstSeenAt
+            $this->firstSeenAt,
+            $this->identity,
+            $this->aliases
+        );
+    }
+
+    /**
+     * The finding as it is stored: kept in the row with this id, under this identity.
+     *
+     * @param int|null $id
+     * @param string $identity
+     * @return self
+     */
+    public function stored(?int $id, string $identity): self
+    {
+        return new self(
+            $this->package,
+            $this->installedVersion,
+            $this->advisoryId,
+            $this->title,
+            $this->link,
+            $this->cve,
+            $this->severity,
+            $this->fixedIn,
+            $this->exploited,
+            $id,
+            $this->dismissed,
+            $this->firstSeenAt,
+            $identity,
+            $this->aliases
         );
     }
 

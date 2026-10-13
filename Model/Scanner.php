@@ -4,34 +4,41 @@ declare(strict_types=1);
 
 namespace Ruvelo\SecurityAlerts\Model;
 
+use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\App\ProductMetadataInterface;
+use Ruvelo\SecurityAdvisories\Ecosystem;
+use Ruvelo\SecurityAdvisories\Finding as CoreFinding;
+use Ruvelo\SecurityAdvisories\Report;
+use Ruvelo\SecurityAdvisories\Severity as CoreSeverity;
 use Ruvelo\SecurityAlerts\Exception\SourceException;
-use Ruvelo\SecurityAlerts\Model\Source\AdvisoryClient;
-use Ruvelo\SecurityAlerts\Model\Source\KevCatalogue;
+use Ruvelo\SecurityAlerts\Model\Packages\MagentoPackages;
 
 /**
  * Works out which known vulnerabilities apply to this store right now. Reads, never writes.
+ *
+ * The reading of composer.lock, the advisory sources (Valtry first, the public feeds as the
+ * fallback), the matching and the exploited-in-the-wild verdict belong to the shared core,
+ * ruvelo/security-advisories. What is Magento's stays here: the core version, the bundled
+ * modules that are skipped, and the two edition names a core flaw is filed under.
  */
 class Scanner
 {
     /** The two names Packagist files Magento core advisories under. */
-    public const CORE_PACKAGES = ['magento/product-community-edition', 'magento/community-edition'];
+    public const CORE_PACKAGES = MagentoPackages::CORE_PACKAGES;
 
     /**
      * __construct.
      *
      * @param ProductMetadataInterface $productMetadata
-     * @param ComposerLock $composerLock
-     * @param AdvisoryClient $advisories
-     * @param KevCatalogue $kev
-     * @param AdvisoryMatcher $matcher
+     * @param DirectoryList $directoryList
+     * @param CoreFactory $coreFactory
+     * @param Config $config
      */
     public function __construct(
         private readonly ProductMetadataInterface $productMetadata,
-        private readonly ComposerLock $composerLock,
-        private readonly AdvisoryClient $advisories,
-        private readonly KevCatalogue $kev,
-        private readonly AdvisoryMatcher $matcher
+        private readonly DirectoryList $directoryList,
+        private readonly CoreFactory $coreFactory,
+        private readonly Config $config
     ) {
     }
 
@@ -39,103 +46,93 @@ class Scanner
      * Scan.
      *
      * @return ScanResult
-     * @throws SourceException When Packagist cannot be reached: without it there is no answer to give
+     * @throws SourceException When no advisory source can be reached: without it there is no answer to give
      */
     public function scan(): ScanResult
     {
-        $warnings = [];
-        $installed = [];
-
-        try {
-            $installed = $this->composerLock->packages();
-        } catch (SourceException $e) {
-            $warnings[] = $e->getMessage();
-        }
-
-        $core = $this->coreVersion();
-        if ($core === null) {
-            $warnings[] = 'The Magento version could not be read, so core advisories were not checked.';
-        } else {
-            foreach (self::CORE_PACKAGES as $name) {
-                $installed[$name] = $core;
-            }
-        }
-        if ($installed === []) {
+        $packages = new MagentoPackages($this->directoryList->getRoot() . '/composer.lock', $this->coreVersion());
+        if (!$packages->hasAnything()) {
             throw new SourceException('There is nothing to check: no Magento version and no composer.lock.');
         }
 
-        $advisories = $this->advisories->fetch(array_keys($installed));
+        // A check is always a fresh look: nothing old is shown as current.
+        $report = $this->coreFactory->create($packages, $this->config->advisorySource())->scan(true);
 
-        try {
-            $exploitedCves = $this->kev->exploitedCves();
-        } catch (SourceException $e) {
-            $exploitedCves = [];
-            $warnings[] = 'The CISA exploited-vulnerabilities list could not be fetched, so nothing is flagged as exploited this time: '
-                . $e->getMessage();
+        $warnings = $packages->warnings();
+        if (!$report->isCheckedFor(Ecosystem::Composer)) {
+            throw new SourceException(implode(' ', $report->problems) ?: 'No advisory source could be reached.');
+        }
+        // What is left (the exploited list, say) did not stop the check, but is worth a line.
+        foreach ($report->problems as $problem) {
+            $warnings[] = $problem;
         }
 
-        $findings = [];
-        foreach ($advisories as $package => $list) {
-            if (!isset($installed[$package])) {
-                continue;
-            }
-            foreach ($list as $advisory) {
-                $finding = $this->toFinding($package, $installed[$package], $advisory, $exploitedCves);
-                if ($finding !== null) {
-                    $findings[$finding->key()] = $finding;
-                }
-            }
+        if ($report->packageCount() === 0) {
+            throw new SourceException('There is nothing to check: no Magento version and no readable composer.lock.');
         }
 
-        return new ScanResult($this->sort(array_values($this->dedupeCore($findings))), $warnings, count($installed));
+        $kept = $this->dedupeCore($report->findings);
+        $findings = $this->sort(array_map(fn (CoreFinding $f): Finding => $this->toFinding($f), $kept));
+
+        return new ScanResult($findings, $warnings, $report->packageCount(), $this->origin($report));
     }
 
     /**
      * To finding.
      *
-     * @param string $package
-     * @param string $version
-     * @param array<string, mixed> $advisory
-     * @param array<string, true> $exploitedCves
-     * @return Finding|null
+     * @param CoreFinding $core
+     * @return Finding
      */
-    private function toFinding(string $package, string $version, array $advisory, array $exploitedCves): ?Finding
+    private function toFinding(CoreFinding $core): Finding
     {
-        $constraint = $advisory['affectedVersions'] ?? null;
-        $id = $advisory['advisoryId'] ?? null;
-        if (!is_string($constraint) || !is_string($id) || !$this->matcher->affects($version, $constraint)) {
-            return null;
-        }
-        $cve = $this->text($advisory['cve'] ?? null);
-
         return new Finding(
-            $package,
-            $version,
-            $id,
-            $this->text($advisory['title'] ?? null) ?? $id,
-            $this->text($advisory['link'] ?? null),
-            $cve,
-            $this->text($advisory['severity'] ?? null),
-            $this->matcher->fixedIn($version, $constraint),
-            $cve !== null && isset($exploitedCves[strtoupper($cve)])
+            $core->package,
+            $core->installed,
+            $core->advisoryId,
+            $core->title,
+            $core->link,
+            $core->cve,
+            $core->severity === CoreSeverity::NotRated ? null : $core->severity->value,
+            $core->fixedIn,
+            $core->isExploited(),
+            null,
+            false,
+            null,
+            null,
+            $core->aliases
         );
+    }
+
+    /**
+     * Origin.
+     *
+     * @param Report $report
+     * @return string
+     */
+    private function origin(Report $report): string
+    {
+        return match ($report->source) {
+            ScanResult::SOURCE_VALTRY => ScanResult::SOURCE_VALTRY,
+            ScanResult::SOURCE_MIXED => ScanResult::SOURCE_MIXED,
+            default => ScanResult::SOURCE_PUBLIC,
+        };
     }
 
     /**
      * Packagist lists the same Magento core flaw under both edition names. Show it once.
      *
-     * @param array<string, Finding> $findings
-     * @return array<string, Finding>
+     * @param list<CoreFinding> $findings
+     * @return list<CoreFinding>
      */
     private function dedupeCore(array $findings): array
     {
         // Same order every run, so the surviving row (and its key in the store) never flips.
-        $rank = static fn (Finding $f): int => (int)array_search($f->package, self::CORE_PACKAGES, true);
-        uasort($findings, static fn (Finding $a, Finding $b): int => $rank($a) <=> $rank($b));
+        $rank = static fn (CoreFinding $f): int => (int)array_search($f->package, self::CORE_PACKAGES, true);
+        usort($findings, static fn (CoreFinding $a, CoreFinding $b): int => $rank($a) <=> $rank($b));
 
         $seen = [];
         $result = [];
-        foreach ($findings as $key => $finding) {
+        foreach ($findings as $finding) {
             if (in_array($finding->package, self::CORE_PACKAGES, true) && $finding->cve !== null) {
                 $coreKey = 'core|' . $finding->cve;
                 if (isset($seen[$coreKey])) {
@@ -143,7 +140,7 @@ class Scanner
                 }
                 $seen[$coreKey] = true;
             }
-            $result[$key] = $finding;
+            $result[] = $finding;
         }
 
         return $result;
@@ -181,16 +178,5 @@ class Scanner
         }
 
         return $version;
-    }
-
-    /**
-     * Text.
-     *
-     * @param mixed $value
-     * @return string|null
-     */
-    private function text(mixed $value): ?string
-    {
-        return is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
 }
